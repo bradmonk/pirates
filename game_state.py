@@ -2,7 +2,8 @@
 Pirate Game - Core game logic and state management
 """
 import csv
-from typing import Tuple, List, Dict, Optional
+import random
+from typing import Tuple, List, Dict, Optional, Any
 from dataclasses import dataclass
 from enum import Enum
 
@@ -72,6 +73,42 @@ class GameMap:
         cell = self.get_cell(pos)
         return cell != CellType.LAND.value
     
+    def is_path_clear(self, start: Position, end: Position) -> Tuple[bool, str, List[Position]]:
+        """Check if there's a clear path from start to end position, allowing only orthogonal moves"""
+        # Calculate the path - only allow moves in cardinal directions (no diagonal)
+        dx = end.x - start.x
+        dy = end.y - start.y
+        
+        # Check if move distance is valid (max 3 tiles)
+        distance = abs(dx) + abs(dy)
+        if distance > 3:
+            return False, f"Move distance ({distance}) exceeds maximum of 3 tiles", []
+        
+        # For now, we'll implement a simple path: move all X first, then all Y
+        # In a more sophisticated version, we could implement A* pathfinding
+        path = [start]
+        current = start
+        
+        # Move horizontally first
+        x_step = 1 if dx > 0 else -1 if dx < 0 else 0
+        for _ in range(abs(dx)):
+            current = Position(current.x + x_step, current.y)
+            if not self.can_move_to(current):
+                blocked_cell = self.get_cell(current)
+                return False, f"Path blocked by {blocked_cell} at ({current.x}, {current.y})", []
+            path.append(current)
+        
+        # Move vertically
+        y_step = 1 if dy > 0 else -1 if dy < 0 else 0
+        for _ in range(abs(dy)):
+            current = Position(current.x, current.y + y_step)
+            if not self.can_move_to(current):
+                blocked_cell = self.get_cell(current)
+                return False, f"Path blocked by {blocked_cell} at ({current.x}, {current.y})", []
+            path.append(current)
+        
+        return True, "Path is clear", path[1:]  # Exclude starting position
+    
     def get_surrounding_cells(self, pos: Position, radius: int = 3) -> Dict[Position, str]:
         """Get all cells within radius of the given position"""
         surrounding = {}
@@ -103,6 +140,10 @@ class GameState:
         self.ship_position = self._find_initial_ship_position()
         self.treasures_collected = 0
         self.lives = 3
+        self.cannonballs = 25  # Start with 25 cannonballs
+        self.score = 0  # Score tracking system
+        self.enemies_defeated = 0  # Track enemies defeated
+        self.monsters_defeated = 0  # Track monsters defeated
         self.turn_count = 0
         self.game_over = False
         self.victory = False
@@ -120,43 +161,97 @@ class GameState:
             raise ValueError("No ship position (O) found on the map!")
         return ship_positions[0]  # Take the first ship position
     
-    def move_ship(self, direction: Tuple[int, int]) -> bool:
-        """Move the ship in the given direction (dx, dy)"""
-        new_position = Position(
+    def move_ship(self, direction: Tuple[int, int]) -> Tuple[bool, str, Dict[str, Any]]:
+        """Move the ship in the given direction (dx, dy) up to 3 tiles"""
+        target_position = Position(
             self.ship_position.x + direction[0],
             self.ship_position.y + direction[1]
         )
         
-        if not self.game_map.can_move_to(new_position):
-            return False
+        # Check if the path is clear
+        path_clear, message, path = self.game_map.is_path_clear(self.ship_position, target_position)
         
-        # Check what's at the new position
-        cell_content = self.game_map.get_cell(new_position)
+        if not path_clear:
+            return False, message, {"reason": "illegal_move", "message": message}
         
-        # Handle different cell types
-        if cell_content == CellType.TREASURE.value:
-            self.collect_treasure(new_position)
-        elif cell_content == CellType.ENEMY.value or cell_content == CellType.MONSTER.value:
-            self.take_damage()
-            # Remove the defeated enemy/monster
-            self.game_map.set_cell(new_position, CellType.WATER.value)
+        # If path is clear, move through each step and collect items/handle encounters
+        move_results = {
+            "success": True,
+            "old_position": (self.ship_position.x, self.ship_position.y),
+            "path": [(pos.x, pos.y) for pos in path],
+            "encounters": [],
+            "treasures_collected": 0,
+            "damage_taken": 0,
+            "final_position": (target_position.x, target_position.y)
+        }
         
-        # Move the ship
-        self.ship_position = new_position
+        for step_pos in path:
+            cell_content = self.game_map.get_cell(step_pos)
+            
+            # Handle encounters at each step
+            if cell_content == CellType.TREASURE.value:
+                old_treasures = self.treasures_collected
+                old_cannonballs = self.cannonballs
+                self.collect_treasure(step_pos)
+                move_results["encounters"].append({
+                    "position": (step_pos.x, step_pos.y),
+                    "type": "treasure",
+                    "result": f"Collected treasure! Gained 2 cannonballs."
+                })
+                move_results["treasures_collected"] += 1
+                
+            elif cell_content == CellType.ENEMY.value:
+                old_lives = self.lives
+                self.take_damage()
+                damage = old_lives - self.lives
+                self.game_map.set_cell(step_pos, CellType.WATER.value)
+                move_results["encounters"].append({
+                    "position": (step_pos.x, step_pos.y),
+                    "type": "enemy",
+                    "result": f"Engaged enemy! Lost {damage} life."
+                })
+                move_results["damage_taken"] += damage
+                
+            elif cell_content == CellType.MONSTER.value:
+                old_lives = self.lives
+                self.take_damage()
+                damage = old_lives - self.lives
+                self.game_map.set_cell(step_pos, CellType.WATER.value)
+                move_results["encounters"].append({
+                    "position": (step_pos.x, step_pos.y),
+                    "type": "monster", 
+                    "result": f"Fought monster! Lost {damage} life."
+                })
+                move_results["damage_taken"] += damage
+        
+        # Move the ship to final position
+        self.ship_position = target_position
         self.turn_count += 1
         
         # Check victory condition
         if self.treasures_collected >= self.total_treasures:
             self.victory = True
             self.game_over = True
+            
+        # Check game over condition
+        if self.lives <= 0:
+            self.game_over = True
         
-        return True
+        success_message = f"Successfully moved to {target_position.x},{target_position.y}"
+        if move_results["encounters"]:
+            success_message += f" with {len(move_results['encounters'])} encounters"
+            
+        return True, success_message, move_results
     
     def collect_treasure(self, pos: Position):
         """Collect treasure at the given position"""
         self.treasures_collected += 1
+        self.cannonballs += 2  # Reward 2 cannonballs per treasure
+        self.score += 10  # Add 10 points for treasure
         self.game_map.set_cell(pos, CellType.WATER.value)
         print(f"🏆 Treasure collected! Total: {self.treasures_collected}/{self.total_treasures}")
+        print(f"💰 Rewarded with 2 cannonballs! Total: {self.cannonballs} cannonballs")
+        print(f"⭐ +10 points! Score: {self.score}")
     
     def take_damage(self):
         """Ship takes damage from enemy or monster"""
@@ -166,23 +261,136 @@ class GameState:
             self.game_over = True
             print("💀 Game Over - Ship destroyed!")
     
-    def fire_cannon(self, target_pos: Position) -> bool:
-        """Fire cannon at target position"""
-        # Check if target is within range (adjacent cells)
+    def fire_cannon(self, target_pos: Position) -> Tuple[bool, str]:
+        """Fire cannon at target position with probabilistic hit system"""
+        # Check if we have cannonballs
+        if self.cannonballs <= 0:
+            return False, "No cannonballs remaining! Collect treasures to get more ammunition."
+        
+        # Check if target is within range (5 tile radius)
         distance = abs(target_pos.x - self.ship_position.x) + abs(target_pos.y - self.ship_position.y)
-        if distance > 1:
-            print("🎯 Target too far - cannons have range of 1 tile")
-            return False
+        if distance > 5:
+            return False, f"Target too far - cannons have range of 5 tiles (target distance: {distance})"
         
         cell_content = self.game_map.get_cell(target_pos)
         if cell_content in [CellType.ENEMY.value, CellType.MONSTER.value]:
-            self.game_map.set_cell(target_pos, CellType.WATER.value)
-            print(f"💥 {cell_content} destroyed at {target_pos.x}, {target_pos.y}!")
-            return True
+            # Consume a cannonball
+            self.cannonballs -= 1
+            
+            # Calculate hit probability based on distance
+            hit_probabilities = {5: 0.25, 4: 0.50, 3: 0.75, 2: 0.90, 1: 0.95}
+            hit_chance = hit_probabilities.get(distance, 0.25)
+            
+            # Roll for hit
+            if random.random() <= hit_chance:
+                # Hit! Destroy target and award points
+                self.game_map.set_cell(target_pos, CellType.WATER.value)
+                target_type = "Enemy" if cell_content == CellType.ENEMY.value else "Monster"
+                
+                if cell_content == CellType.ENEMY.value:
+                    self.enemies_defeated += 1
+                    self.score += 10  # +10 points for enemy
+                    points_msg = "+10 points"
+                else:  # Monster
+                    self.monsters_defeated += 1
+                    self.score += 50  # +50 points for monster
+                    points_msg = "+50 points"
+                
+                success_message = f"💥 Direct hit! {target_type} destroyed at {target_pos.x},{target_pos.y}! {points_msg}! Score: {self.score}. Cannonballs remaining: {self.cannonballs}"
+                print(success_message)
+                return True, success_message
+            else:
+                # Miss!
+                miss_message = f"💦 Cannon fire missed target at {target_pos.x},{target_pos.y} (hit chance: {hit_chance:.0%}). Cannonballs remaining: {self.cannonballs}"
+                print(miss_message)
+                return False, miss_message
         else:
-            print("🎯 No target at that position")
-            return False
+            # Consume cannonball even for invalid targets (shot was fired)
+            self.cannonballs -= 1
+            return False, f"💦 Cannon fired at empty water at ({target_pos.x},{target_pos.y}). Cannonballs remaining: {self.cannonballs}"
     
+    def move_enemies_and_monsters(self) -> List[Dict]:
+        """Move enemies and monsters toward the ship if within 3 tiles"""
+        movements = []
+        
+        # Find all enemies and monsters on the map
+        entities_to_move = []
+        for y in range(self.game_map.height):
+            for x in range(self.game_map.width):
+                cell = self.game_map.get_cell(Position(x, y))
+                if cell in [CellType.ENEMY.value, CellType.MONSTER.value]:
+                    entities_to_move.append({
+                        'position': Position(x, y),
+                        'type': cell
+                    })
+        
+        for entity in entities_to_move:
+            current_pos = entity['position']
+            entity_type = entity['type']
+            
+            # Calculate distance to ship
+            dx = self.ship_position.x - current_pos.x
+            dy = self.ship_position.y - current_pos.y
+            distance = max(abs(dx), abs(dy))  # Chebyshev distance (max of x,y differences)
+            
+            # Only move if within 3 tiles of the ship
+            if distance <= 3:
+                # Determine the best direction to move (one tile toward ship)
+                move_x = 0
+                move_y = 0
+                
+                if dx != 0:
+                    move_x = 1 if dx > 0 else -1
+                if dy != 0:
+                    move_y = 1 if dy > 0 else -1
+                
+                # Try multiple movement options in order of preference
+                movement_options = []
+                
+                # Primary: diagonal move toward ship
+                if move_x != 0 and move_y != 0:
+                    movement_options.append(Position(current_pos.x + move_x, current_pos.y + move_y))
+                
+                # Secondary: horizontal move toward ship
+                if move_x != 0:
+                    movement_options.append(Position(current_pos.x + move_x, current_pos.y))
+                
+                # Tertiary: vertical move toward ship
+                if move_y != 0:
+                    movement_options.append(Position(current_pos.x, current_pos.y + move_y))
+                
+                # Try each movement option
+                moved = False
+                for new_pos in movement_options:
+                    if (self.game_map.is_valid_position(new_pos) and 
+                        self.game_map.get_cell(new_pos) == CellType.WATER.value):
+                        
+                        # Move the entity
+                        self.game_map.set_cell(current_pos, CellType.WATER.value)
+                        self.game_map.set_cell(new_pos, entity_type)
+                        
+                        movements.append({
+                            'entity_type': 'Enemy' if entity_type == CellType.ENEMY.value else 'Monster',
+                            'from': (current_pos.x, current_pos.y),
+                            'to': (new_pos.x, new_pos.y),
+                            'distance_to_ship': max(abs(self.ship_position.x - new_pos.x), 
+                                                  abs(self.ship_position.y - new_pos.y))
+                        })
+                        moved = True
+                        break
+                
+                if not moved:
+                    # Entity couldn't move (blocked by land or other entities)
+                    movements.append({
+                        'entity_type': 'Enemy' if entity_type == CellType.ENEMY.value else 'Monster',
+                        'from': (current_pos.x, current_pos.y),
+                        'to': (current_pos.x, current_pos.y),
+                        'blocked': True,
+                        'distance_to_ship': distance
+                    })
+        
+        return movements
+
     def get_status(self) -> Dict:
         """Get current game status"""
         return {
@@ -190,6 +398,10 @@ class GameState:
             "lives": self.lives,
             "treasures_collected": self.treasures_collected,
             "total_treasures": self.total_treasures,
+            "cannonballs": self.cannonballs,
+            "score": self.score,
+            "enemies_defeated": self.enemies_defeated,
+            "monsters_defeated": self.monsters_defeated,
             "turn_count": self.turn_count,
             "game_over": self.game_over,
             "victory": self.victory

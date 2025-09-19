@@ -1,6 +1,8 @@
 langchain
 langgraph
 langchain-ollama
+langchain-openai
+openai
 numpy
 pandas
 typing-extensions

@@ -91,14 +91,20 @@ class CannoneerTool:
         self.game_state = game_state
     
     def get_targets_in_range(self) -> List[Dict[str, Any]]:
-        """Get all hostile targets within cannon range (1 tile)"""
+        """Get all hostile targets within cannon range (2 tiles)"""
         ship_pos = self.game_state.ship_position
         targets = []
         
-        # Check all adjacent positions (cannon range = 1)
-        for dx in [-1, 0, 1]:
-            for dy in [-1, 0, 1]:
-                if dx == 0 and dy == 0:  # Skip ship's position
+        # Check all positions within 2-tile radius (Manhattan distance)
+        for dx in range(-2, 3):  # -2, -1, 0, 1, 2
+            for dy in range(-2, 3):
+                # Skip ship's position
+                if dx == 0 and dy == 0:
+                    continue
+                
+                # Check if within 2-tile range (Manhattan distance)
+                distance = abs(dx) + abs(dy)
+                if distance > 2:
                     continue
                 
                 target_pos = Position(ship_pos.x + dx, ship_pos.y + dy)
@@ -118,31 +124,34 @@ class CannoneerTool:
         target_pos = Position(target_x, target_y)
         ship_pos = self.game_state.ship_position
         
-        # Check range
+        # Check range (2 tiles)
         distance = abs(target_pos.x - ship_pos.x) + abs(target_pos.y - ship_pos.y)
-        if distance > 1:
+        if distance > 2:
             return {
                 "success": False,
                 "message": f"Target at ({target_x}, {target_y}) is out of range (distance: {distance})",
-                "range_limit": 1
+                "range_limit": 2,
+                "cannonballs_remaining": self.game_state.cannonballs
+            }
+        
+        # Check cannonball availability
+        if self.game_state.cannonballs <= 0:
+            return {
+                "success": False,
+                "message": "No cannonballs remaining! Collect treasures to get more ammunition.",
+                "cannonballs_remaining": 0
             }
         
         # Attempt to fire
-        success = self.game_state.fire_cannon(target_pos)
+        success, message = self.game_state.fire_cannon(target_pos)
         
-        if success:
-            return {
-                "success": True,
-                "message": f"Successfully destroyed target at ({target_x}, {target_y})",
-                "target_destroyed": True
-            }
-        else:
-            cell = self.game_state.game_map.get_cell(target_pos)
-            return {
-                "success": False,
-                "message": f"No valid target at ({target_x}, {target_y}). Found: {cell}",
-                "target_destroyed": False
-            }
+        return {
+            "success": success,
+            "message": message,
+            "target_destroyed": success,
+            "cannonballs_remaining": self.game_state.cannonballs,
+            "cannonballs_used": 1 if success else 0
+        }
 
 class CaptainTool:
     """Tool for the Captain agent to move the ship"""
@@ -151,81 +160,137 @@ class CaptainTool:
         self.game_state = game_state
     
     def get_possible_moves(self) -> List[Dict[str, Any]]:
-        """Get all possible moves from current position"""
+        """Get all possible moves from current position (up to 3 tiles in cardinal directions)"""
         ship_pos = self.game_state.ship_position
         possible_moves = []
         
-        # Check all 8 directions (including diagonals)
+        # Check moves in 4 cardinal directions up to 3 tiles each
         directions = [
-            (-1, -1, "Northwest"), (-1, 0, "North"), (-1, 1, "Northeast"),
-            (0, -1, "West"), (0, 1, "East"),
-            (1, -1, "Southwest"), (1, 0, "South"), (1, 1, "Southeast")
+            (0, -1, "North"), (0, 1, "South"), (-1, 0, "West"), (1, 0, "East")
         ]
         
-        for dx, dy, name in directions:
-            new_pos = Position(ship_pos.x + dx, ship_pos.y + dy)
-            
-            if self.game_state.game_map.is_valid_position(new_pos):
-                cell = self.game_state.game_map.get_cell(new_pos)
-                can_move = self.game_state.game_map.can_move_to(new_pos)
+        for base_dx, base_dy, direction_name in directions:
+            # Check moves of 1, 2, and 3 tiles in this direction
+            for distance in range(1, 4):  # 1, 2, 3 tiles
+                dx = base_dx * distance
+                dy = base_dy * distance
+                target_pos = Position(ship_pos.x + dx, ship_pos.y + dy)
                 
-                risk_level = "Safe"
-                if cell == CellType.ENEMY.value:
-                    risk_level = "Dangerous - Enemy"
-                elif cell == CellType.MONSTER.value:
-                    risk_level = "Very Dangerous - Monster"
-                elif cell == CellType.TREASURE.value:
-                    risk_level = "Rewarding - Treasure"
-                
-                possible_moves.append({
-                    "direction": (dx, dy),
-                    "direction_name": name,
-                    "position": (new_pos.x, new_pos.y),
-                    "can_move": can_move,
-                    "cell_type": cell,
-                    "risk_assessment": risk_level
-                })
+                # Check if this move is possible
+                if self.game_state.game_map.is_valid_position(target_pos):
+                    path_clear, message, path = self.game_state.game_map.is_path_clear(ship_pos, target_pos)
+                    
+                    if path_clear:
+                        # Analyze what's along the path
+                        encounters = []
+                        treasures_count = 0
+                        enemies_count = 0
+                        monsters_count = 0
+                        
+                        for step_pos in path:
+                            cell = self.game_state.game_map.get_cell(step_pos)
+                            if cell == CellType.TREASURE.value:
+                                treasures_count += 1
+                                encounters.append(f"Treasure at ({step_pos.x},{step_pos.y})")
+                            elif cell == CellType.ENEMY.value:
+                                enemies_count += 1
+                                encounters.append(f"Enemy at ({step_pos.x},{step_pos.y})")
+                            elif cell == CellType.MONSTER.value:
+                                monsters_count += 1
+                                encounters.append(f"Monster at ({step_pos.x},{step_pos.y})")
+                        
+                        # Assess risk level
+                        if monsters_count > 0:
+                            risk_level = f"Very Dangerous - {monsters_count} Monster(s)"
+                        elif enemies_count > 0:
+                            risk_level = f"Dangerous - {enemies_count} Enemy(s)"
+                        elif treasures_count > 0:
+                            risk_level = f"Rewarding - {treasures_count} Treasure(s)"
+                        else:
+                            risk_level = "Safe"
+                        
+                        possible_moves.append({
+                            "direction": (dx, dy),
+                            "direction_name": f"{direction_name} {distance} tile(s)",
+                            "target_position": (target_pos.x, target_pos.y),
+                            "distance": distance,
+                            "can_move": True,
+                            "path": [(pos.x, pos.y) for pos in path],
+                            "encounters": encounters,
+                            "risk_assessment": risk_level,
+                            "treasures_on_path": treasures_count,
+                            "enemies_on_path": enemies_count,
+                            "monsters_on_path": monsters_count
+                        })
+                    else:
+                        # Path is blocked
+                        possible_moves.append({
+                            "direction": (dx, dy),
+                            "direction_name": f"{direction_name} {distance} tile(s)",
+                            "target_position": (target_pos.x, target_pos.y),
+                            "distance": distance,
+                            "can_move": False,
+                            "blocked_reason": message,
+                            "risk_assessment": "Blocked"
+                        })
+                else:
+                    # Target position is off the map
+                    possible_moves.append({
+                        "direction": (dx, dy),
+                        "direction_name": f"{direction_name} {distance} tile(s)",
+                        "target_position": (target_pos.x, target_pos.y),
+                        "distance": distance,
+                        "can_move": False,
+                        "blocked_reason": "Position is outside map boundaries",
+                        "risk_assessment": "Off Map"
+                    })
         
         return possible_moves
     
     def move_ship(self, direction_x: int, direction_y: int) -> Dict[str, Any]:
-        """Move the ship in the specified direction"""
+        """Move the ship in the specified direction (up to 3 tiles)"""
         old_pos = (self.game_state.ship_position.x, self.game_state.ship_position.y)
         old_lives = self.game_state.lives
         old_treasures = self.game_state.treasures_collected
+        old_cannonballs = self.game_state.cannonballs
         
-        success = self.game_state.move_ship((direction_x, direction_y))
+        success, message, move_data = self.game_state.move_ship((direction_x, direction_y))
         
-        if success:
-            new_pos = (self.game_state.ship_position.x, self.game_state.ship_position.y)
-            lives_lost = old_lives - self.game_state.lives
-            treasures_gained = self.game_state.treasures_collected - old_treasures
-            
-            result = {
-                "success": True,
-                "old_position": old_pos,
-                "new_position": new_pos,
-                "lives_lost": lives_lost,
-                "treasures_gained": treasures_gained,
-                "turn_count": self.game_state.turn_count,
-                "game_over": self.game_state.game_over,
-                "victory": self.game_state.victory
-            }
-            
-            if treasures_gained > 0:
-                result["message"] = f"Moved to {new_pos} and collected treasure!"
-            elif lives_lost > 0:
-                result["message"] = f"Moved to {new_pos} but took damage from hostile!"
-            else:
-                result["message"] = f"Successfully moved to {new_pos}"
-                
-            return result
-        else:
+        if not success:
             return {
                 "success": False,
-                "message": "Cannot move in that direction - blocked by land or invalid position",
-                "current_position": old_pos
+                "reason": "illegal_move",
+                "message": message,
+                "current_position": old_pos,
+                "attempted_move": (direction_x, direction_y),
+                "turn_count": self.game_state.turn_count
             }
+        
+        # Successful move - extract detailed information
+        result = {
+            "success": True,
+            "message": message,
+            "old_position": old_pos,
+            "new_position": (self.game_state.ship_position.x, self.game_state.ship_position.y),
+            "path_taken": move_data.get("path", []),
+            "encounters": move_data.get("encounters", []),
+            "lives_lost": old_lives - self.game_state.lives,
+            "treasures_gained": move_data.get("treasures_collected", 0),
+            "cannonballs_gained": self.game_state.cannonballs - old_cannonballs,
+            "total_cannonballs": self.game_state.cannonballs,
+            "turn_count": self.game_state.turn_count,
+            "game_over": self.game_state.game_over,
+            "victory": self.game_state.victory
+        }
+        
+        # Add detailed summary of the move
+        if result["encounters"]:
+            encounter_summary = []
+            for encounter in result["encounters"]:
+                encounter_summary.append(f"{encounter['type']} at {encounter['position']}: {encounter['result']}")
+            result["encounter_summary"] = encounter_summary
+            
+        return result
 
 class GameTools:
     """Container for all game tools"""

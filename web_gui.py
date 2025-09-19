@@ -18,6 +18,7 @@ class PirateGameWebGUI:
         self.running = False
         self.selected_model = None
         self.game_started = False
+        self.game_stop_requested = False
         self.agent_reports = {}
         
     def start_server(self):
@@ -63,9 +64,9 @@ class PirateGameWebGUI:
                         self.send_header('Access-Control-Allow-Origin', '*')
                         self.end_headers()
                         
-                        # Get available Ollama models
-                        from ai_agents import get_available_models
-                        models = get_available_models()
+                        # Get available models from both providers
+                        from ai_agents import get_all_available_models
+                        models = get_all_available_models()
                         self.wfile.write(json.dumps(models).encode())
                     else:
                         super().do_GET()
@@ -86,6 +87,17 @@ class PirateGameWebGUI:
                         self.game_gui.game_started = True
                         
                         response = {'status': 'success', 'message': 'Game started'}
+                        self.wfile.write(json.dumps(response).encode())
+                    elif self.path == '/stop_game':
+                        self.send_response(200)
+                        self.send_header('Content-type', 'application/json')
+                        self.send_header('Access-Control-Allow-Origin', '*')
+                        self.end_headers()
+                        
+                        # Set the stop flag
+                        self.game_gui.game_stop_requested = True
+                        
+                        response = {'status': 'success', 'message': 'Game stop requested'}
                         self.wfile.write(json.dumps(response).encode())
                     else:
                         self.send_response(404)

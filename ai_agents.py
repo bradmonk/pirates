@@ -1,10 +1,12 @@
 """
-Pirate Game - AI Agents using LangGraph and Ollama
+Pirate Game - AI Agents using LangGraph with Ollama and OpenAI
 """
 import subprocess
 import json
+import os
 from typing import Dict, List, Any, Optional
 from langchain_ollama import ChatOllama
+from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langchain_core.tools import tool
 from langgraph.graph import StateGraph, END
@@ -37,6 +39,28 @@ def get_available_models() -> List[str]:
         print(f"Error getting Ollama models: {e}")
         return []
 
+def get_openai_models() -> List[str]:
+    """Get list of available OpenAI models"""
+    # Common OpenAI models that work well for this application
+    return [
+        "gpt-4o-mini",
+        "gpt-4o",
+        "gpt-4-turbo",
+        "gpt-3.5-turbo"
+    ]
+
+def is_openai_model(model_name: str) -> bool:
+    """Check if model is an OpenAI model"""
+    return model_name in get_openai_models()
+
+def get_all_available_models() -> Dict[str, List[str]]:
+    """Get all available models grouped by provider"""
+    models = {
+        'ollama': get_available_models(),
+        'openai': get_openai_models() if os.getenv("OPENAI_API_KEY") else []
+    }
+    return models
+
 def select_model() -> str:
     """Let user select which Ollama model to use"""
     models = get_available_models()
@@ -66,17 +90,30 @@ def select_model() -> str:
 class PirateGameAgents:
     """Container for all game agents"""
     
-    def __init__(self, game_state: GameState, model_name: str):
+    def __init__(self, game_state: GameState, model_name: str, use_openai: bool = False):
         self.game_state = game_state
         self.game_tools = GameTools(game_state)
+        self.model_name = model_name
+        self.use_openai = use_openai
         
-        # Initialize the language model
-        self.llm = ChatOllama(
-            model=model_name,
-            temperature=0.7,
-            verbose=True,  # Enable verbose output
-            # Remove format="json" to allow more natural language responses
-        )
+        # Initialize the appropriate language model
+        if use_openai:
+            if not os.getenv("OPENAI_API_KEY"):
+                raise ValueError("OpenAI API key not found in environment variables")
+            print(f"🤖 Initializing OpenAI model: {model_name}")
+            self.llm = ChatOpenAI(
+                model=model_name,
+                temperature=0.7,
+                max_tokens=2000
+            )
+        else:
+            print(f"🤖 Initializing Ollama model: {model_name}")
+            self.llm = ChatOllama(
+                model=model_name,
+                temperature=0.7,
+                verbose=True,  # Enable verbose output
+                # Remove format="json" to allow more natural language responses
+            )
         
         # Create tools for LangGraph
         self.setup_tools()
@@ -99,22 +136,22 @@ class PirateGameAgents:
         
         @tool
         def fire_cannon(target_x: int, target_y: int) -> Dict[str, Any]:
-            """Fire cannon at specified coordinates."""
+            """Fire cannon at specified coordinates. Costs 1 cannonball. Range: 2 tiles."""
             return self.game_tools.cannoneer.fire_cannon(target_x, target_y)
         
         @tool
         def get_possible_moves() -> List[Dict[str, Any]]:
-            """Get all possible moves from current position."""
+            """Get all possible moves from current position. Ship can move up to 3 tiles per turn in cardinal directions."""
             return self.game_tools.captain.get_possible_moves()
         
         @tool
         def move_ship(direction_x: int, direction_y: int) -> Dict[str, Any]:
-            """Move the ship in the specified direction."""
+            """Move the ship up to 3 tiles in cardinal directions. Illegal moves through land will fail with explanation."""
             return self.game_tools.captain.move_ship(direction_x, direction_y)
         
         @tool
         def get_game_status() -> Dict[str, Any]:
-            """Get comprehensive game status including position, lives, treasures, etc."""
+            """Get comprehensive game status including position, lives, treasures, cannonballs, etc."""
             return self.game_tools.get_game_status()
         
         self.tools = [navigate_scan, get_cannon_targets, fire_cannon, get_possible_moves, move_ship, get_game_status]
@@ -129,20 +166,22 @@ class PirateGameAgents:
             """Navigator agent - scans environment and reports findings"""
             system_message = SystemMessage(content="""
             You are the Navigator of a pirate ship. Your role is to scan the environment and provide 
-            detailed reconnaissance reports to help the Captain make informed decisions.
+            a reconnaissance report to help the Captain make informed decisions.
+            
+            IMPORTANT GAME MECHANICS:
+            - Ship can move up to 3 tiles per turn in cardinal directions (North/South/East/West)
+            - Each treasure collected rewards 2 cannonballs
+            - Ship starts with 25 cannonballs, cannons cost 1 cannonball per shot
+            - Illegal moves through land barriers will be blocked with explanation
             
             Your responsibilities:
             - Scan the surrounding area for treasures, enemies, monsters, and obstacles
-            - Assess immediate threats and opportunities 
-            - Provide clear, detailed intelligence reports with reasoning
-            - Make recommendations based on your observations
+            - Make ship movement recommendations based on your observations
+            - Consider multi-tile movement possibilities when recommending paths
             
-            BE EXTREMELY VERBOSE AND DETAILED in your analysis. Explain your thought process,
-            what you observe, potential risks, opportunities, and strategic recommendations.
-            Think step by step and share all your observations and reasoning.
+            BE BRIEF in your analysis.
             
-            Start by using the navigate_scan tool to gather information, then provide a comprehensive
-            analysis of what you discovered and what it means for the ship's safety and treasure hunting mission.
+            Start by using the navigate_scan tool to gather information.
             """)
             
             print("\\n🧭 NAVIGATOR: Beginning environmental scan...")
@@ -159,6 +198,7 @@ class PirateGameAgents:
             Ship Position: {status['ship_position']}
             Lives Remaining: {status['lives']}/3
             Treasures Collected: {status['treasures_collected']}/{status['total_treasures']}
+            Cannonballs Remaining: {status['cannonballs']}
             Turn Number: {status['turn_count']}
             
             SCAN RESULTS:
@@ -194,21 +234,29 @@ class PirateGameAgents:
             system_message = SystemMessage(content="""
             You are the Cannoneer of a pirate ship. Your role is to handle all combat operations and protect the crew.
             
+            IMPORTANT GAME MECHANICS:
+            - Combat cost 1 cannonball per shot (limited ammunition!)
+            - Ship starts with 25 cannonballs total
+            - Each treasure collected rewards 2 cannonballs
+            - Cannon range is 2 tiles (Manhattan distance)
+            - Must conserve ammunition for critical threats
+            
             Your responsibilities:
-            - Identify hostile targets within cannon range (1 tile adjacent)
-            - Prioritize threats (Monsters are more dangerous than Enemies)
-            - Execute cannon fire when targets are available and strategically sound
+            - Identify hostile targets within cannon range (2 tiles Manhattan distance)
+            - Execute cannon fire when tactically advantageous AND ammunition allows
+            - Monitor cannonball supply and advise on ammunition conservation
             - Coordinate with Navigator for threat assessment
-            - Provide detailed tactical analysis of combat situations
+            - Provide detailed tactical analysis considering resource constraints
             
             BE EXTREMELY VERBOSE AND DETAILED in your combat analysis. Explain:
+            - Current cannonball count and ammunition status
             - What targets you can see and their threat levels
-            - Your targeting priorities and reasoning
-            - Whether to engage or hold fire and why
+            - Whether ammunition expenditure is justified for each target
+            - Your targeting priorities and resource management reasoning
+            - Whether to engage or conserve ammunition and why
             - Combat recommendations for the Captain
-            - Risk assessment of different tactical options
             
-            Think like a seasoned naval combat expert. Share your tactical thinking process step by step.
+            Think like a seasoned naval combat expert with limited ammunition. Every shot counts!
             """)
             
             print("\\n⚔️  CANNONEER: Assessing combat situation...")
@@ -227,7 +275,7 @@ class PirateGameAgents:
             Navigator Intelligence: {navigator_report}
             
             TACTICAL CONSIDERATIONS:
-            - Cannon range: 1 tile (adjacent positions only)
+            - Cannon range: 2 tiles (Manhattan distance)
             - Monster threat level: High (more dangerous)
             - Enemy threat level: Medium  
             - Each shot should be carefully considered
@@ -261,25 +309,33 @@ class PirateGameAgents:
             system_message = SystemMessage(content="""
             You are the Captain of a pirate ship. You make the final decisions on movement, strategy, and crew coordination.
             
+            IMPORTANT GAME MECHANICS:
+            - Ship can move up to 3 tiles per turn in cardinal directions (North/South/East/West)
+            - Movement through land barriers is IMPOSSIBLE - such moves will fail
+            - Each treasure collected rewards 2 cannonballs
+            - Ship starts with 25 cannonballs, cannons cost 1 cannonball per shot
+            - Failed moves will explain why they're illegal (e.g., "Path blocked by land at (x,y)")
+            
             Your responsibilities:
             - Analyze comprehensive reports from Navigator and Cannoneer
-            - Make strategic movement decisions to maximize treasure collection while minimizing risk
+            - Make strategic movement decisions using the new 3-tile movement range
             - Coordinate the crew's actions and overall mission strategy
-            - Balance risk vs reward in every decision
+            - Balance risk vs reward, considering cannonball economy
             - Prioritize crew survival while pursuing the treasure hunting mission
             
             BE EXTREMELY VERBOSE AND DETAILED in your command decisions. Provide:
             - Analysis of all available intelligence from your crew
-            - Evaluation of possible movement options and their risks/benefits  
+            - Evaluation of multi-tile movement options and their risks/benefits  
             - Strategic reasoning behind your chosen course of action
             - Risk assessment and contingency thinking
             - Clear movement commands with full justification
             
             Consider these priorities in order:
             1. Crew survival (avoid unnecessary damage)
-            2. Treasure acquisition (move toward valuable targets)
+            2. Treasure acquisition (move toward valuable targets using extended range)
             3. Tactical positioning (maintain strategic advantage)
-            4. Threat elimination (when safe and beneficial)
+            4. Resource management (conserve cannonballs when possible)
+            5. Threat elimination (when safe and beneficial)
             
             Think like an experienced pirate captain - bold but calculated, treasure-focused but not reckless.
             Explain your leadership decisions and strategic thinking in detail.
@@ -297,7 +353,8 @@ class PirateGameAgents:
             print("👨‍✈️ CAPTAIN: Analyzing available movement options...")
             for i, move in enumerate(possible_moves):
                 risk_color = "🟢" if "Safe" in move['risk_assessment'] else "🟡" if "Rewarding" in move['risk_assessment'] else "🔴"
-                print(f"👨‍✈️ CAPTAIN: Option {i+1}: {move['direction_name']} to {move['position']} {risk_color} {move['risk_assessment']}")
+                target_pos = move.get('target_position', 'unknown')
+                print(f"👨‍✈️ CAPTAIN: Option {i+1}: {move['direction_name']} to {target_pos} {risk_color} {move['risk_assessment']}")
             
             strategic_context = f"""
             COMMAND SITUATION BRIEFING:
@@ -312,7 +369,7 @@ class PirateGameAgents:
             Cannoneer Report: {cannoneer_report}
             
             MOVEMENT OPTIONS ANALYSIS:
-            {chr(10).join([f"- {move['direction_name']}: {move['risk_assessment']} (to {move['position']})" for move in possible_moves if move['can_move']])}
+            {chr(10).join([f"- {move['direction_name']}: {move['risk_assessment']} (to {move.get('target_position', 'unknown')})" for move in possible_moves if move['can_move']])}
             
             STRATEGIC OBJECTIVES:
             - Primary: Collect all {current_status['total_treasures']} treasures  
@@ -416,9 +473,13 @@ def test_agents():
     if not model_name:
         return
     
+    # Determine if it's OpenAI model
+    use_openai = is_openai_model(model_name)
+    print(f"Using {'OpenAI' if use_openai else 'Ollama'} model: {model_name}")
+    
     # Initialize game
     game_state = GameState()
-    agents = PirateGameAgents(game_state, model_name)
+    agents = PirateGameAgents(game_state, model_name, use_openai)
     
     print("\\n=== Initial Game State ===")
     game_state.display_map()

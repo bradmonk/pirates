@@ -8,7 +8,7 @@ import time
 from typing import Optional
 
 from game_state import GameState
-from ai_agents import PirateGameAgents, select_model
+from ai_agents import PirateGameAgents, select_model, is_openai_model
 
 # Import GUI with fallback
 try:
@@ -116,8 +116,11 @@ class PirateGame:
                 return
         
         # Initialize agents with selected model
-        print(f"\\n🤖 Initializing AI agents with model: {self.gui.selected_model}")
-        self.agents = PirateGameAgents(self.game_state, self.gui.selected_model)
+        model_name = self.gui.selected_model
+        use_openai = is_openai_model(model_name)
+        
+        print(f"\\n🤖 Initializing AI agents with {'OpenAI' if use_openai else 'Ollama'} model: {model_name}")
+        self.agents = PirateGameAgents(self.game_state, model_name, use_openai)
         
         print("\\n🚢 Setting sail...")
         print("\\n" + "="*80)
@@ -132,6 +135,12 @@ class PirateGame:
         max_turns = 50  # Prevent infinite loops
         
         while not self.game_state.game_over and turn_count < max_turns:
+            # Check if stop was requested via web UI
+            if self.use_gui and self.gui and self.gui.game_stop_requested:
+                print("\\n🛑 GAME STOP REQUESTED VIA WEB INTERFACE")
+                print("🚢 Anchoring ship and ending voyage...")
+                break
+                
             turn_count += 1
             print(f"\\n{'='*30} TURN {turn_count} BEGINS {'='*30}")
             print(f"📍 Current Status: Position {self.game_state.ship_position.x},{self.game_state.ship_position.y} | Lives: {self.game_state.lives} | Treasures: {self.game_state.treasures_collected}/{self.game_state.total_treasures}")
@@ -153,6 +162,20 @@ class PirateGame:
                     print("-" * 40)
                     print(report)
                     print("-" * 40)
+                
+                # Move enemies and monsters toward the ship
+                print("\\n👹 ENEMY MOVEMENT PHASE:")
+                print("-" * 60)
+                enemy_movements = self.game_state.move_enemies_and_monsters()
+                if enemy_movements:
+                    for movement in enemy_movements:
+                        if movement.get('blocked', False):
+                            print(f"🚫 {movement['entity_type']} at {movement['from']} blocked by terrain (distance: {movement['distance_to_ship']} tiles)")
+                        else:
+                            print(f"⚔️ {movement['entity_type']} moved from {movement['from']} → {movement['to']} (distance to ship: {movement['distance_to_ship']} tiles)")
+                else:
+                    print("🏝️ No enemies within 3 tiles of ship - all quiet")
+                print("-" * 60)
                 
                 # Show updated game state
                 if self.use_gui and self.gui:
@@ -199,7 +222,10 @@ class PirateGame:
                 else:
                     break
         
-        if turn_count >= max_turns:
+        # Check why the game ended
+        if self.use_gui and self.gui and self.gui.game_stop_requested:
+            print(f"\\n🛑 Game ended by user request after {turn_count - 1} turns")
+        elif turn_count >= max_turns:
             print(f"\\n⏰ Game ended after {max_turns} turns (maximum reached)")
         
         self._end_game_summary()

@@ -7,11 +7,10 @@
     <style>
         body {
             font-family: 'Courier New', monospace;
-            background-color: #1a1a2e;
+            background-color: #16213e;
             color: #eee;
             margin: 0;
             padding: 20px;
-        }
         
         .container {
             max-width: 1200px;
@@ -68,6 +67,29 @@
         }
         
         .start-button:disabled {
+            background-color: #7f8c8d;
+            cursor: not-allowed;
+        }
+        
+        .stop-button {
+            background-color: #e74c3c;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 10px;
+            transition: background-color 0.3s;
+            display: none;
+        }
+        
+        .stop-button:hover {
+            background-color: #c0392b;
+        }
+        
+        .stop-button:disabled {
             background-color: #7f8c8d;
             cursor: not-allowed;
         }
@@ -186,6 +208,7 @@
                     </select>
                 </div>
                 <button id="startButton" class="start-button" disabled>Start Game</button>
+                <button id="stopButton" class="stop-button">Stop Game</button>
                 <div id="gameStatus" class="game-status" style="display: none;">
                     Game Status: <span id="statusText">Ready</span>
                 </div>
@@ -227,10 +250,14 @@
             <div class="status-info">
                 <h3>Ship Status</h3>
                 <div id="ship-status">
-                    <p>Position: Loading...</p>
-                    <p>Lives: Loading...</p>
-                    <p>Treasures: Loading...</p>
-                    <p>Turn: Loading...</p>
+                    <p><strong>Score:</strong> <span id="score">Loading...</span></p>
+                    <p>Position: <span id="position">Loading...</span></p>
+                    <p>Lives: <span id="lives">Loading...</span></p>
+                    <p>Treasures: <span id="treasures">Loading...</span> / <span id="total_treasures">Loading...</span></p>
+                    <p>Enemies Defeated: <span id="enemies_defeated">Loading...</span></p>
+                    <p>Monsters Defeated: <span id="monsters_defeated">Loading...</span></p>
+                    <p>Cannonballs: <span id="cannonballs">Loading...</span></p>
+                    <p>Turn: <span id="turn">Loading...</span></p>
                 </div>
             </div>
             
@@ -273,6 +300,11 @@
                 startButton.addEventListener('click', () => {
                     this.startGame();
                 });
+                
+                const stopButton = document.getElementById('stopButton');
+                stopButton.addEventListener('click', () => {
+                    this.stopGame();
+                });
             }
             
             async loadAvailableModels() {
@@ -288,16 +320,59 @@
                 }
             }
             
-            updateModelDropdown(models) {
+            updateModelDropdown(modelsData) {
                 const select = document.getElementById('modelSelect');
                 select.innerHTML = '<option value="">Select a model...</option>';
                 
-                models.forEach(model => {
-                    const option = document.createElement('option');
-                    option.value = model;
-                    option.textContent = model;
-                    select.appendChild(option);
-                });
+                // Handle both old format (array) and new format (grouped object)
+                if (Array.isArray(modelsData)) {
+                    // Old format - just Ollama models
+                    modelsData.forEach(model => {
+                        const option = document.createElement('option');
+                        option.value = model;
+                        option.textContent = `Ollama: ${model}`;
+                        select.appendChild(option);
+                    });
+                } else {
+                    // New format - grouped by provider
+                    if (modelsData.ollama && modelsData.ollama.length > 0) {
+                        const ollamaGroup = document.createElement('optgroup');
+                        ollamaGroup.label = 'Ollama (Local)';
+                        
+                        modelsData.ollama.forEach(model => {
+                            const option = document.createElement('option');
+                            option.value = model;
+                            option.textContent = model;
+                            ollamaGroup.appendChild(option);
+                        });
+                        
+                        select.appendChild(ollamaGroup);
+                    }
+                    
+                    if (modelsData.openai && modelsData.openai.length > 0) {
+                        const openaiGroup = document.createElement('optgroup');
+                        openaiGroup.label = 'OpenAI (Cloud)';
+                        
+                        modelsData.openai.forEach(model => {
+                            const option = document.createElement('option');
+                            option.value = model;
+                            option.textContent = model;
+                            openaiGroup.appendChild(option);
+                        });
+                        
+                        select.appendChild(openaiGroup);
+                    }
+                    
+                    // If no models available, show message
+                    if ((!modelsData.ollama || modelsData.ollama.length === 0) && 
+                        (!modelsData.openai || modelsData.openai.length === 0)) {
+                        const option = document.createElement('option');
+                        option.value = '';
+                        option.textContent = 'No models available';
+                        option.disabled = true;
+                        select.appendChild(option);
+                    }
+                }
             }
             
             async startGame() {
@@ -326,6 +401,11 @@
                     if (response.ok) {
                         this.gameRunning = true;
                         startButton.textContent = 'Game Running';
+                        startButton.style.display = 'none';
+                        
+                        const stopButton = document.getElementById('stopButton');
+                        stopButton.style.display = 'inline-block';
+                        
                         statusText.textContent = 'Game Active';
                         this.startPolling();
                     } else {
@@ -336,6 +416,47 @@
                     startButton.textContent = 'Start Game';
                     statusText.textContent = 'Error starting game';
                     console.error('Error starting game:', error);
+                }
+            }
+            
+            async stopGame() {
+                const startButton = document.getElementById('startButton');
+                const stopButton = document.getElementById('stopButton');
+                const statusDiv = document.getElementById('gameStatus');
+                const statusText = document.getElementById('statusText');
+                
+                stopButton.disabled = true;
+                stopButton.textContent = 'Stopping...';
+                
+                try {
+                    const response = await fetch('/stop_game', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        this.gameRunning = false;
+                        this.stopPolling();
+                        
+                        // Reset UI elements
+                        startButton.disabled = false;
+                        startButton.textContent = 'Start Game';
+                        startButton.style.display = 'inline-block';
+                        stopButton.style.display = 'none';
+                        statusText.textContent = 'Game Stopped';
+                        
+                        console.log('Game stopped successfully');
+                    } else {
+                        throw new Error('Failed to stop game');
+                    }
+                } catch (error) {
+                    console.error('Error stopping game:', error);
+                    statusText.textContent = 'Error stopping game';
+                } finally {
+                    stopButton.disabled = false;
+                    stopButton.textContent = 'Stop Game';
                 }
             }
             
@@ -387,7 +508,7 @@
                             switch (cellType) {
                                 case 'W':
                                     cell.className += ' water';
-                                    cell.textContent = '~';
+                                    cell.textContent = ' ';
                                     break;
                                 case 'L':
                                     cell.className += ' land';
@@ -414,9 +535,13 @@
             updateStatus(status) {
                 const statusDiv = document.getElementById('ship-status');
                 statusDiv.innerHTML = `
+                    <p><strong>Score:</strong> ${status.score || 0}</p>
                     <p>Position: (${status.ship_position[0]}, ${status.ship_position[1]})</p>
                     <p>Lives: ${'❤️'.repeat(status.lives)} ${status.lives}/3</p>
                     <p>Treasures: ${status.treasures_collected}/${status.total_treasures}</p>
+                    <p>Enemies Defeated: ${status.enemies_defeated || 0}</p>
+                    <p>Monsters Defeated: ${status.monsters_defeated || 0}</p>
+                    <p>Cannonballs: ${status.cannonballs || 25}</p>
                     <p>Turn: ${status.turn_count}</p>
                 `;
             }

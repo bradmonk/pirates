@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pirate Game - AI Agents</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background-color: #1a1a2e;
+            color: #eee;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 20px;
+        }
+        
+        .game-area {
+            background-color: #16213e;
+            border-radius: 10px;
+            padding: 20px;
+        }
+        
+        .game-controls {
+            background-color: #0f3460;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .model-selector {
+            margin: 10px 0;
+        }
+        
+        .model-selector select {
+            background-color: #1a1a2e;
+            color: #eee;
+            border: 2px solid #f39c12;
+            border-radius: 5px;
+            padding: 8px 12px;
+            font-family: inherit;
+            font-size: 14px;
+            min-width: 200px;
+        }
+        
+        .start-button {
+            background-color: #f39c12;
+            color: #000;
+            border: none;
+            border-radius: 5px;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 10px;
+            transition: background-color 0.3s;
+        }
+        
+        .start-button:hover {
+            background-color: #e67e22;
+        }
+        
+        .start-button:disabled {
+            background-color: #7f8c8d;
+            cursor: not-allowed;
+        }
+        
+        .game-status {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #1a1a2e;
+            border-radius: 5px;
+            border-left: 4px solid #27ae60;
+        }
+        
+        .status-panel {
+            background-color: #0f3460;
+            border-radius: 10px;
+            padding: 20px;
+        }
+        
+        .map-grid {
+            display: grid;
+            grid-template-columns: repeat(30, 20px);
+            grid-template-rows: repeat(30, 20px);
+            gap: 1px;
+            margin: 20px 0;
+            justify-content: center;
+        }
+        
+        .cell {
+            width: 20px;
+            height: 20px;
+            border: 1px solid #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .water { background-color: #2980b9; color: #fff; }
+        .land { background-color: #8b4513; color: #fff; }
+        .treasure { background-color: #f1c40f; color: #000; }
+        .enemy { background-color: #e74c3c; color: #fff; }
+        .monster { background-color: #8e44ad; color: #fff; }
+        .ship { background-color: #00ff00; color: #000; animation: pulse 2s infinite; }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        
+        .status-info {
+            background-color: #1a1a2e;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            border-left: 4px solid #f39c12;
+        }
+        
+        .agent-log {
+            background-color: #1a1a2e;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-size: 12px;
+        }
+        
+        .navigator { border-left: 4px solid #3498db; }
+        .cannoneer { border-left: 4px solid #e74c3c; }
+        .captain { border-left: 4px solid #f39c12; }
+        
+        h1 {
+            text-align: center;
+            color: #f39c12;
+            margin-bottom: 20px;
+        }
+        
+        h3 {
+            color: #f39c12;
+            margin-top: 0;
+        }
+        
+        .legend {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin: 10px 0;
+            flex-wrap: wrap;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .legend-color {
+            width: 15px;
+            height: 15px;
+            border: 1px solid #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="game-area">
+            <h1>🏴‍☠️ AI Pirate Adventure</h1>
+            
+            <div class="game-controls">
+                <div class="model-selector">
+                    <label for="modelSelect">Select Ollama Model:</label>
+                    <select id="modelSelect">
+                        <option value="">Loading models...</option>
+                    </select>
+                </div>
+                <button id="startButton" class="start-button" disabled>Start Game</button>
+                <div id="gameStatus" class="game-status" style="display: none;">
+                    Game Status: <span id="statusText">Ready</span>
+                </div>
+            </div>
+            
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color water"></div>
+                    <span>Water</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color land"></div>
+                    <span>Land</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color treasure"></div>
+                    <span>Treasure</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color enemy"></div>
+                    <span>Enemy</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color monster"></div>
+                    <span>Monster</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color ship"></div>
+                    <span>Your Ship</span>
+                </div>
+            </div>
+            
+            <div id="map-container" class="map-grid">
+                <!-- Map cells will be generated here -->
+            </div>
+        </div>
+        
+        <div class="status-panel">
+            <div class="status-info">
+                <h3>Ship Status</h3>
+                <div id="ship-status">
+                    <p>Position: Loading...</p>
+                    <p>Lives: Loading...</p>
+                    <p>Treasures: Loading...</p>
+                    <p>Turn: Loading...</p>
+                </div>
+            </div>
+            
+            <div class="agent-log navigator">
+                <h3>🧭 Navigator</h3>
+                <div id="navigator-log">Waiting for navigator report...</div>
+            </div>
+            
+            <div class="agent-log cannoneer">
+                <h3>⚔️ Cannoneer</h3>
+                <div id="cannoneer-log">Waiting for cannoneer report...</div>
+            </div>
+            
+            <div class="agent-log captain">
+                <h3>👨‍✈️ Captain</h3>
+                <div id="captain-log">Waiting for captain report...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class PirateGameUI {
+            constructor() {
+                this.gameRunning = false;
+                this.selectedModel = null;
+                this.initializeControls();
+                this.initializeMap();
+                this.loadAvailableModels();
+            }
+            
+            initializeControls() {
+                const startButton = document.getElementById('startButton');
+                const modelSelect = document.getElementById('modelSelect');
+                
+                modelSelect.addEventListener('change', (e) => {
+                    this.selectedModel = e.target.value;
+                    startButton.disabled = !this.selectedModel;
+                });
+                
+                startButton.addEventListener('click', () => {
+                    this.startGame();
+                });
+            }
+            
+            async loadAvailableModels() {
+                try {
+                    const response = await fetch('/available_models.json');
+                    if (response.ok) {
+                        const models = await response.json();
+                        this.updateModelDropdown(models);
+                    }
+                } catch (error) {
+                    console.log('Could not load models, using fallback...');
+                    this.updateModelDropdown(['llama3.1:latest', 'llama2:latest', 'codellama:latest']);
+                }
+            }
+            
+            updateModelDropdown(models) {
+                const select = document.getElementById('modelSelect');
+                select.innerHTML = '<option value="">Select a model...</option>';
+                
+                models.forEach(model => {
+                    const option = document.createElement('option');
+                    option.value = model;
+                    option.textContent = model;
+                    select.appendChild(option);
+                });
+            }
+            
+            async startGame() {
+                if (!this.selectedModel) return;
+                
+                const startButton = document.getElementById('startButton');
+                const statusDiv = document.getElementById('gameStatus');
+                const statusText = document.getElementById('statusText');
+                
+                startButton.disabled = true;
+                startButton.textContent = 'Starting Game...';
+                statusDiv.style.display = 'block';
+                statusText.textContent = 'Initializing...';
+                
+                try {
+                    const response = await fetch('/start_game', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            model: this.selectedModel
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        this.gameRunning = true;
+                        startButton.textContent = 'Game Running';
+                        statusText.textContent = 'Game Active';
+                        this.startPolling();
+                    } else {
+                        throw new Error('Failed to start game');
+                    }
+                } catch (error) {
+                    startButton.disabled = false;
+                    startButton.textContent = 'Start Game';
+                    statusText.textContent = 'Error starting game';
+                    console.error('Error starting game:', error);
+                }
+            }
+            
+            initializeMap() {
+                const mapContainer = document.getElementById('map-container');
+                // Create 30x30 grid
+                for (let y = 0; y < 30; y++) {
+                    for (let x = 0; x < 30; x++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'cell water';
+                        cell.id = `cell-${x}-${y}`;
+                        mapContainer.appendChild(cell);
+                    }
+                }
+            }
+            
+            async loadGameState() {
+                try {
+                    const response = await fetch('/game_state.json');
+                    if (response.ok) {
+                        const gameState = await response.json();
+                        this.updateDisplay(gameState);
+                    }
+                } catch (error) {
+                    console.log('Waiting for game state...');
+                }
+            }
+            
+            updateDisplay(gameState) {
+                this.updateMap(gameState.map, gameState.ship_position);
+                this.updateStatus(gameState.status);
+                this.updateAgentLogs(gameState.agent_reports);
+            }
+            
+            updateMap(mapData, shipPosition) {
+                // Clear all cells first
+                for (let y = 0; y < 30; y++) {
+                    for (let x = 0; x < 30; x++) {
+                        const cell = document.getElementById(`cell-${x}-${y}`);
+                        const cellType = mapData[y][x];
+                        
+                        cell.className = 'cell';
+                        cell.textContent = '';
+                        
+                        if (shipPosition && shipPosition[0] === x && shipPosition[1] === y) {
+                            cell.className += ' ship';
+                            cell.textContent = '⚓';
+                        } else {
+                            switch (cellType) {
+                                case 'W':
+                                    cell.className += ' water';
+                                    cell.textContent = '~';
+                                    break;
+                                case 'L':
+                                    cell.className += ' land';
+                                    cell.textContent = '■';
+                                    break;
+                                case 'T':
+                                    cell.className += ' treasure';
+                                    cell.textContent = '$';
+                                    break;
+                                case 'E':
+                                    cell.className += ' enemy';
+                                    cell.textContent = '!';
+                                    break;
+                                case 'M':
+                                    cell.className += ' monster';
+                                    cell.textContent = 'M';
+                                    break;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            updateStatus(status) {
+                const statusDiv = document.getElementById('ship-status');
+                statusDiv.innerHTML = `
+                    <p>Position: (${status.ship_position[0]}, ${status.ship_position[1]})</p>
+                    <p>Lives: ${'❤️'.repeat(status.lives)} ${status.lives}/3</p>
+                    <p>Treasures: ${status.treasures_collected}/${status.total_treasures}</p>
+                    <p>Turn: ${status.turn_count}</p>
+                `;
+            }
+            
+            updateAgentLogs(reports) {
+                if (reports.navigator) {
+                    document.getElementById('navigator-log').innerHTML = reports.navigator.replace(/\n/g, '<br>');
+                }
+                if (reports.cannoneer) {
+                    document.getElementById('cannoneer-log').innerHTML = reports.cannoneer.replace(/\n/g, '<br>');
+                }
+                if (reports.captain) {
+                    document.getElementById('captain-log').innerHTML = reports.captain.replace(/\n/g, '<br>');
+                }
+            }
+            
+            startPolling() {
+                // Only poll when game is running
+                if (!this.gameRunning) return;
+                
+                // Poll for updates every 2 seconds
+                this.pollInterval = setInterval(() => {
+                    this.loadGameState();
+                }, 2000);
+                
+                // Initial load
+                this.loadGameState();
+            }
+        }
+        
+        // Initialize the UI when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new PirateGameUI();
+        });
+    </script>
+</body>
+</html>

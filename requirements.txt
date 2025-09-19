@@ -1,0 +1,6 @@
+langchain
+langgraph
+langchain-ollama
+numpy
+pandas
+typing-extensions

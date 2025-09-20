@@ -1,3 +1,10 @@
+# Developer specific files
+.well-known/
+.github/
+archive/
+graphs/
+
+
 # Python
 __pycache__/
 *.py[cod]
@@ -88,6 +95,3 @@ node_modules/
 # Temporary folders
 tmp/
 temp/
-
-# Archive folder (contains unused/deprecated files)
-archive/

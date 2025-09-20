@@ -1,5 +1,7 @@
 # 🏴‍☠️ AI Pirate Treasure Hunt
 
+![Pirates UI Screenshot](docs/pirates_ui.png)
+
 An advanced AI-powered pirate treasure hunting game where three specialized AI agents work together to navigate treacherous waters, collect treasures, and battle enemies using LangGraph and local LLM integration.
 
 ## 🎮 Game Overview

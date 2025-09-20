@@ -41,8 +41,8 @@ Navigate a pirate ship across a 30x30 grid map using three AI agents that collab
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/ai-pirate-treasure-hunt.git
-   cd ai-pirate-treasure-hunt
+   git clone https://github.com/bradmonk/pirates.git
+   cd pirates
    ```
 
 2. **Set up Python environment**

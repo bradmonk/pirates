@@ -75,12 +75,6 @@ Navigate a pirate ship across a 30x30 grid map using three AI agents that collab
 
 ## 🎛️ Advanced Features
 
-### Chrome DevTools Live Editing
-1. Open Chrome DevTools (F12) while viewing the game
-2. Go to Sources tab → "Add folder to workspace"  
-3. Select the project folder and allow access
-4. Edit HTML/CSS directly in DevTools - changes save automatically!
-
 ### Custom System Prompts
 - Use the left panel to modify each agent's behavior
 - Real-time prompt updates without restarting the game
@@ -89,7 +83,7 @@ Navigate a pirate ship across a 30x30 grid map using three AI agents that collab
 ## 📁 Project Structure
 
 ```
-ai-pirate-treasure-hunt/
+pirates/
 ├── index.html              # Main web interface
 ├── styles.css              # Separated CSS styling
 ├── web_gui.py              # HTTP server and web interface logic
@@ -100,9 +94,6 @@ ai-pirate-treasure-hunt/
 ├── map.csv                 # Game map definition
 ├── requirements.txt        # Python dependencies
 ├── restart.sh              # Development startup script
-├── DEVELOPMENT.md          # Detailed development log
-├── .well-known/            # Chrome DevTools workspace config
-└── archive/                # Legacy implementations
 ```
 
 ## 🛠️ Development

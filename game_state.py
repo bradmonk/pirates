@@ -243,6 +243,60 @@ class GameState:
             
         return True, success_message, move_results
     
+    def get_movement_animation_data(self, direction: Tuple[int, int]) -> Dict[str, Any]:
+        """Get detailed animation data for multi-tile movement including each step"""
+        target_position = Position(
+            self.ship_position.x + direction[0],
+            self.ship_position.y + direction[1]
+        )
+        
+        # Check if the path is clear
+        path_clear, message, path = self.game_map.is_path_clear(self.ship_position, target_position)
+        
+        if not path_clear:
+            return {"success": False, "error": message, "steps": []}
+        
+        # Build animation steps data
+        animation_data = {
+            "success": True,
+            "total_steps": len(path) - 1,  # Don't count starting position
+            "steps": []
+        }
+        
+        for i, step_pos in enumerate(path):
+            if i == 0:  # Skip starting position
+                continue
+                
+            cell_content = self.game_map.get_cell(step_pos)
+            step_data = {
+                "step_number": i,
+                "position": (step_pos.x, step_pos.y),
+                "cell_type": cell_content,
+                "encounter": None,
+                "delay_ms": 400  # Pause duration between steps
+            }
+            
+            # Determine what happens at this step
+            if cell_content == CellType.TREASURE.value:
+                step_data["encounter"] = {
+                    "type": "treasure",
+                    "message": "Collected treasure! +2 cannonballs"
+                }
+            elif cell_content == CellType.ENEMY.value:
+                step_data["encounter"] = {
+                    "type": "enemy", 
+                    "message": "Engaged enemy! -1 life"
+                }
+            elif cell_content == CellType.MONSTER.value:
+                step_data["encounter"] = {
+                    "type": "monster",
+                    "message": "Fought monster! -1 life"
+                }
+                
+            animation_data["steps"].append(step_data)
+        
+        return animation_data
+    
     def collect_treasure(self, pos: Position):
         """Collect treasure at the given position"""
         self.treasures_collected += 1
@@ -390,6 +444,29 @@ class GameState:
                     })
         
         return movements
+    
+    def get_pursuing_entities(self) -> List[Dict]:
+        """Get list of enemies and monsters that are actively pursuing (within 3 tiles of ship)"""
+        pursuing_entities = []
+        
+        for y in range(self.game_map.height):
+            for x in range(self.game_map.width):
+                cell = self.game_map.get_cell(Position(x, y))
+                if cell in [CellType.ENEMY.value, CellType.MONSTER.value]:
+                    # Calculate distance to ship
+                    dx = self.ship_position.x - x
+                    dy = self.ship_position.y - y
+                    distance = max(abs(dx), abs(dy))  # Chebyshev distance
+                    
+                    # Entity is pursuing if within 3 tiles
+                    if distance <= 3:
+                        pursuing_entities.append({
+                            'position': (x, y),
+                            'type': cell,
+                            'distance': distance
+                        })
+        
+        return pursuing_entities
 
     def get_status(self) -> Dict:
         """Get current game status"""
@@ -404,7 +481,8 @@ class GameState:
             "monsters_defeated": self.monsters_defeated,
             "turn_count": self.turn_count,
             "game_over": self.game_over,
-            "victory": self.victory
+            "victory": self.victory,
+            "pursuing_entities": self.get_pursuing_entities()
         }
     
     def display_map(self, radius: int = 5):

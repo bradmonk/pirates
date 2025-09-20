@@ -40,10 +40,10 @@ body {
 }
 
 .container {
-    max-width: 1400px;
+    max-width: 1800px;
     margin: 0 auto;
     display: grid;
-    grid-template-columns: 300px 1fr 300px;
+    grid-template-columns: .5fr 700px .5fr;
     gap: 15px;
     height: 100vh;
 }
@@ -52,6 +52,75 @@ body {
     background-color: #16213e;
     border-radius: 10px;
     padding: 15px;
+}
+
+/* Model selector at top of system prompts panel */
+.model-selector-top {
+    background-color: #1a1a2e;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 15px;
+}
+
+.model-selector-top h4 {
+    margin: 0 0 10px 0;
+    color: #f39c12;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.model-select {
+    width: 100%;
+    background-color: #16213e;
+    color: #eee;
+    border: 1px solid #f39c12;
+    border-radius: 4px;
+    padding: 8px 10px;
+    font-family: inherit;
+    font-size: 12px;
+    margin-bottom: 10px;
+}
+
+.control-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.control-button {
+    background-color: #27ae60;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-size: 11px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+    justify-content: center;
+}
+
+.control-button:hover {
+    background-color: #229954;
+}
+
+.control-button:disabled {
+    background-color: #7f8c8d;
+    cursor: not-allowed;
+}
+
+.control-button.stop {
+    background-color: #e74c3c;
+    display: none;
+}
+
+.control-button.stop:hover {
+    background-color: #c0392b;
 }
 
 .system-prompts-panel {
@@ -65,7 +134,7 @@ body {
 }
 
 .system-prompts-panel h3 {
-    margin: 0 0 15px 0;
+    margin: 0 0 5px 0;
     color: #f39c12;
     font-size: 16px;
     display: flex;
@@ -77,6 +146,10 @@ body {
     background-color: #1a1a2e;
     border-radius: 8px;
     padding: 12px;
+    padding-right: 24px;
+    height: 300px;
+    display: flex;
+    flex-direction: column;
 }
 
 .prompt-editor h4 {
@@ -97,8 +170,9 @@ body {
     font-family: 'Courier New', monospace;
     font-size: 11px;
     padding: 8px;
-    resize: vertical;
-    min-height: 80px;
+    resize: none;
+    flex: 1;
+    overflow-y: auto;
 }
 
 .prompt-textarea:focus {
@@ -361,10 +435,36 @@ body {
 .monster { background-color: #8e44ad; color: #fff; }
 .ship { background-color: #00ff00; color: #000; animation: pulse 2s infinite; }
 
+/* Pursuit indicator for enemies/monsters actively chasing the player */
+.enemy.pursuing, .monster.pursuing {
+    box-shadow: 0 0 15px 3px rgba(231, 76, 60, 0.8), 0 0 25px 5px rgba(231, 76, 60, 0.4);
+    animation: pursuit-glow 1.5s ease-in-out infinite alternate;
+    border: 2px solid rgba(255, 255, 255, 0.6);
+}
+
+.monster.pursuing {
+    box-shadow: 0 0 15px 3px rgba(142, 68, 173, 0.8), 0 0 25px 5px rgba(142, 68, 173, 0.4);
+}
+
+/* Animating tile movement for multi-tile moves */
+.cell.moving {
+    transition: all 0.4s ease-in-out;
+    transform: scale(1.1);
+}
+
 @keyframes pulse {
     0% { transform: scale(1); }
     50% { transform: scale(1.1); }
     100% { transform: scale(1); }
+}
+
+@keyframes pursuit-glow {
+    0% { 
+        box-shadow: 0 0 15px 3px rgba(231, 76, 60, 0.6), 0 0 25px 5px rgba(231, 76, 60, 0.3);
+    }
+    100% { 
+        box-shadow: 0 0 20px 5px rgba(231, 76, 60, 1), 0 0 35px 8px rgba(231, 76, 60, 0.6);
+    }
 }
 
 .status-info {
@@ -392,15 +492,23 @@ body {
     padding: 8px;
     border-radius: 5px;
     margin-bottom: 8px;
-    max-height: 200px;
+    height: 200px;
     overflow-y: auto;
     font-size: 11px;
+    display: flex;
+    flex-direction: column;
 }
 
 .agent-log h3 {
     margin: 0 0 6px 0;
     font-size: 13px;
     color: #f39c12;
+    flex-shrink: 0;
+}
+
+.agent-log div {
+    flex: 1;
+    overflow-y: auto;
 }
 
 .navigator { border-left: 4px solid #3498db; }

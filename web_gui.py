@@ -135,8 +135,13 @@ Think like an experienced pirate captain - bold but calculated, treasure-focused
                             'ship_position': status['ship_position'],
                             'status': status,
                             'agent_reports': getattr(self.game_gui, 'agent_reports', {}),
-                            'tool_outputs': getattr(self.game_gui, 'tool_outputs', {})
+                            'tool_outputs': getattr(self.game_gui, 'tool_outputs', {}),
+                            'animation_data': getattr(self.game_gui, 'movement_animation_data', None)
                         }
+                        
+                        # Clear animation data after sending it (one-time use)
+                        if hasattr(self.game_gui, 'movement_animation_data'):
+                            self.game_gui.movement_animation_data = None
                         
                         self.wfile.write(json.dumps(game_data).encode())
                     elif self.path == '/available_models.json':

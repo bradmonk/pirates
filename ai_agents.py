@@ -228,7 +228,14 @@ Think like an experienced pirate captain - bold but calculated, treasure-focused
         
         @tool
         def move_ship(direction_x: int, direction_y: int) -> Dict[str, Any]:
-            """Move the ship up to 3 tiles in cardinal directions. Illegal moves through land will fail with explanation."""
+            """Move the ship up to 3 tiles in cardinal directions. 
+            Parameters are TOTAL displacement: 
+            - For 1 tile north: direction_x=0, direction_y=-1
+            - For 2 tiles north: direction_x=0, direction_y=-2  
+            - For 3 tiles north: direction_x=0, direction_y=-3
+            - For 3 tiles east: direction_x=3, direction_y=0
+            Use get_possible_moves() first to see valid directions with their exact coordinates.
+            Illegal moves through land will fail with explanation."""
             return self.game_tools.captain.move_ship(direction_x, direction_y)
         
         @tool
@@ -415,23 +422,56 @@ Think like an experienced pirate captain - bold but calculated, treasure-focused
             # Parse the captain's decision and execute movement
             print("👨‍✈️ CAPTAIN: Executing movement order...")
             
-            # Try to extract movement direction from the response
-            # Look for direction keywords in the response
-            direction_map = {
-                'north': (0, -1), 'south': (0, 1), 'east': (1, 0), 'west': (-1, 0),
-                'northeast': (1, -1), 'northwest': (-1, -1), 'southeast': (1, 1), 'southwest': (-1, 1),
-                'up': (0, -1), 'down': (0, 1), 'left': (-1, 0), 'right': (1, 0)
-            }
-            
+            # Try to extract movement direction and distance from the response
             chosen_direction = None
             response_lower = response.content.lower()
             
-            # Find the first mentioned direction in the response
-            for direction_name, direction_vector in direction_map.items():
-                if direction_name in response_lower:
-                    chosen_direction = direction_vector
-                    print(f"👨‍✈️ CAPTAIN: Parsed movement command: {direction_name} {direction_vector}")
-                    break
+            # First try to match with exact moves from possible_moves
+            for move in possible_moves:
+                if move['can_move']:
+                    direction_name_lower = move['direction_name'].lower()
+                    # Check if this specific move is mentioned in the response
+                    if direction_name_lower in response_lower:
+                        chosen_direction = move['direction']
+                        print(f"👨‍✈️ CAPTAIN: Parsed exact movement command: {move['direction_name']} -> {move['direction']}")
+                        break
+            
+            # If no exact match found, try parsing direction and distance manually
+            if not chosen_direction:
+                direction_map = {
+                    'north': (0, -1), 'south': (0, 1), 'east': (1, 0), 'west': (-1, 0),
+                    'up': (0, -1), 'down': (0, 1), 'left': (-1, 0), 'right': (1, 0)
+                }
+                
+                import re
+                # Look for patterns like "move north 3", "3 tiles north", etc.
+                for direction_name, unit_vector in direction_map.items():
+                    # Try multiple patterns to find distance
+                    distance_patterns = [
+                        rf"{direction_name}\s+(\d+)",  # "north 3"
+                        rf"(\d+)\s+tiles?\s+{direction_name}",  # "3 tiles north"
+                        rf"(\d+)\s+{direction_name}",  # "3 north"  
+                        rf"move\s+{direction_name}\s+(\d+)",  # "move north 3"
+                    ]
+                    
+                    for pattern in distance_patterns:
+                        match = re.search(pattern, response_lower)
+                        if match:
+                            distance = int(match.group(1))
+                            if 1 <= distance <= 3:  # Valid distance
+                                chosen_direction = (unit_vector[0] * distance, unit_vector[1] * distance)
+                                print(f"👨‍✈️ CAPTAIN: Parsed movement command: {direction_name} {distance} tiles -> {chosen_direction}")
+                                break
+                    if chosen_direction:
+                        break
+                
+                # If still no distance found, use default 1-tile move
+                if not chosen_direction:
+                    for direction_name, unit_vector in direction_map.items():
+                        if direction_name in response_lower:
+                            chosen_direction = unit_vector  # Default to 1 tile
+                            print(f"👨‍✈️ CAPTAIN: Parsed movement command (default 1 tile): {direction_name} -> {chosen_direction}")
+                            break
             
             # If no direction found, choose the first safe move
             if not chosen_direction:
@@ -448,6 +488,13 @@ Think like an experienced pirate captain - bold but calculated, treasure-focused
             
             # Execute the movement
             if chosen_direction:
+                # Get animation data before making the move (for multi-tile movement visualization)
+                if self.web_gui:
+                    animation_data = self.game_tools.game_state.get_movement_animation_data(chosen_direction)
+                    if animation_data["success"] and animation_data["total_steps"] > 1:
+                        # Only set animation data for multi-tile moves
+                        self.web_gui.movement_animation_data = animation_data
+                
                 move_result = self.game_tools.captain.move_ship(chosen_direction[0], chosen_direction[1])
                 print(f"👨‍✈️ CAPTAIN: Movement result - {move_result['message']}")
                 

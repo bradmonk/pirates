@@ -36,6 +36,9 @@
 - Check for existing code before adding new functionality to avoid duplication
 - Update DEVELOPMENT.md file when making significant changes
 - Remember this is ARM64 architecture - use appropriate packages
+- **NEVER commit changes to git unless explicitly asked by the user**
+- **Only stage files (git add) when the user specifically requests it**
+- **Do not run git commit or git push without explicit user instruction**
 
 ### Key Commands
 - `./restart.sh` - Start/restart the game (primary command)

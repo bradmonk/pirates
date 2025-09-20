@@ -13,6 +13,18 @@
 <body>
     <div class="container">
         <div class="system-prompts-panel">
+            <!-- Move model dropdown to top of system prompts panel -->
+            <div class="model-selector-top">
+                <h4><span class="material-symbols-outlined">smart_toy</span> LLM Model</h4>
+                <select id="modelSelect" class="model-select">
+                    <option value="">Loading models...</option>
+                </select>
+                <div class="control-buttons">
+                    <button id="startButton" class="control-button start" disabled><span class="material-symbols-outlined">play_arrow</span> Start</button>
+                    <button id="stopButton" class="control-button stop"><span class="material-symbols-outlined">stop</span> Stop</button>
+                </div>
+            </div>
+            
             <h3><span class="material-symbols-outlined">settings</span> System Prompts</h3>
             
             <div class="prompt-editor">
@@ -87,7 +99,11 @@ BE EXTREMELY VERBOSE AND DETAILED in your command decisions. Provide:
 - Evaluation of multi-tile movement options and their risks/benefits  
 - Strategic reasoning behind your chosen course of action
 - Risk assessment and contingency thinking
-- Clear movement commands with full justification
+- Clear movement commands using EXACT terminology from get_possible_moves()
+
+IMPORTANT: When commanding movement, use the exact phrase from get_possible_moves() output.
+Examples: "North 3 tile(s)", "East 2 tile(s)", "South 1 tile(s)"
+This ensures your multi-tile movement commands are executed correctly.
 
 Consider these priorities in order:
 1. Crew survival (avoid unnecessary damage)
@@ -105,14 +121,13 @@ Think like an experienced pirate captain - bold but calculated, treasure-focused
         </div>
         
         <div class="game-area">
-            <div class="header-bar">
-                <h2><span class="material-symbols-outlined">sailing</span> AI Pirate Adventure</h2>
-                <div class="quick-controls">
-                    <select id="modelSelect" class="compact-select">
-                        <option value="">Loading models...</option>
-                    </select>
-                    <button id="startButton" class="compact-button start" disabled><span class="material-symbols-outlined">play_arrow</span> Start</button>
-                    <button id="stopButton" class="compact-button stop"><span class="material-symbols-outlined">stop</span> Stop</button>
+            <!-- Move Ship Status above the map -->
+            <div class="status-info">
+                <h3>AI Pirates Status</h3>
+                <div id="ship-status">
+                    <p><strong>Lives:</strong> <span id="lives">Loading...</span> | <strong>Score:</strong> <span id="score">Loading...</span></p>
+                    <p><strong>Treasures:</strong> <span id="treasures">Loading...</span>/<span id="total_treasures">Loading...</span> | <strong>Turn:</strong> <span id="turn">Loading...</span></p>
+                    <p><strong>Pos:</strong> <span id="position">Loading...</span> | <strong>Ammo:</strong> <span id="cannonballs">Loading...</span></p>
                 </div>
             </div>
             
@@ -123,9 +138,8 @@ Think like an experienced pirate captain - bold but calculated, treasure-focused
             <div id="map-container" class="map-grid">
                 <!-- Map cells will be generated here -->
             </div>
-        </div>
-        
-        <div class="status-panel">
+            
+            <!-- Move legend below the map -->
             <div class="legend">
                 <h4><span class="material-symbols-outlined">map</span> Map Legend</h4>
                 <div class="legend-grid">
@@ -155,16 +169,9 @@ Think like an experienced pirate captain - bold but calculated, treasure-focused
                     </div>
                 </div>
             </div>
-            
-            <div class="status-info">
-                <h3>Ship Status</h3>
-                <div id="ship-status">
-                    <p><strong>Lives:</strong> <span id="lives">Loading...</span> | <strong>Score:</strong> <span id="score">Loading...</span></p>
-                    <p><strong>Treasures:</strong> <span id="treasures">Loading...</span>/<span id="total_treasures">Loading...</span> | <strong>Turn:</strong> <span id="turn">Loading...</span></p>
-                    <p><strong>Pos:</strong> <span id="position">Loading...</span> | <strong>Ammo:</strong> <span id="cannonballs">Loading...</span></p>
-                </div>
-            </div>
-            
+        </div>
+        
+        <div class="status-panel">
             <div class="agent-log navigator">
                 <h3><span class="material-symbols-outlined">navigation</span> Navigator LLM</h3>
                 <div id="navigator-log">Waiting for navigator response...</div>
@@ -414,13 +421,134 @@ Think like an experienced pirate captain - bold but calculated, treasure-focused
             }
             
             updateDisplay(gameState) {
-                this.updateMap(gameState.map, gameState.ship_position);
+                // Handle movement animation if present
+                if (gameState.animation_data && gameState.animation_data.success) {
+                    this.animateMovement(gameState.animation_data, gameState.map, gameState.ship_position, gameState.status);
+                } else {
+                    // Standard update without animation
+                    this.updateMap(gameState.map, gameState.ship_position, gameState.status);
+                }
+                
                 this.updateStatus(gameState.status);
                 this.updateAgentLogs(gameState.agent_reports);
                 this.updateToolLogs(gameState.tool_outputs);
             }
             
-            updateMap(mapData, shipPosition) {
+            async animateMovement(animationData, mapData, finalShipPosition, status) {
+                console.log('Animating movement with', animationData.total_steps, 'steps');
+                
+                // Get pursuing entities for visual effects
+                const pursuingEntities = status ? status.pursuing_entities || [] : [];
+                const pursuingPositions = new Set(
+                    pursuingEntities.map(entity => `${entity.position[0]},${entity.position[1]}`)
+                );
+                
+                // Update map with base state (without ship at final position yet)
+                for (let y = 0; y < 30; y++) {
+                    for (let x = 0; x < 30; x++) {
+                        const cell = document.getElementById(`cell-${x}-${y}`);
+                        const cellType = mapData[y][x];
+                        
+                        cell.className = 'cell';
+                        cell.textContent = '';
+                        
+                        switch (cellType) {
+                            case 'W':
+                                cell.className += ' water';
+                                cell.textContent = ' ';
+                                break;
+                            case 'L':
+                                cell.className += ' land';
+                                cell.textContent = '■';
+                                break;
+                            case 'T':
+                                cell.className += ' treasure';
+                                cell.textContent = '$';
+                                break;
+                            case 'E':
+                                cell.className += ' enemy';
+                                cell.textContent = '!';
+                                if (pursuingPositions.has(`${x},${y}`)) {
+                                    cell.className += ' pursuing';
+                                }
+                                break;
+                            case 'M':
+                                cell.className += ' monster';
+                                cell.textContent = 'M';
+                                if (pursuingPositions.has(`${x},${y}`)) {
+                                    cell.className += ' pursuing';
+                                }
+                                break;
+                        }
+                    }
+                }
+                
+                // Show ship at starting position first
+                const startPos = animationData.steps[0] ? 
+                    [(finalShipPosition[0] - (animationData.steps[animationData.steps.length - 1].position[0] - animationData.steps[0].position[0])), 
+                     (finalShipPosition[1] - (animationData.steps[animationData.steps.length - 1].position[1] - animationData.steps[0].position[1]))] 
+                    : finalShipPosition;
+                    
+                // Better approach: get starting position from first step
+                let currentPos = [finalShipPosition[0], finalShipPosition[1]];
+                if (animationData.steps.length > 0) {
+                    const lastStep = animationData.steps[animationData.steps.length - 1];
+                    const firstStep = animationData.steps[0]; 
+                    currentPos = [
+                        finalShipPosition[0] - (lastStep.position[0] - firstStep.position[0]),
+                        finalShipPosition[1] - (lastStep.position[1] - firstStep.position[1])
+                    ];
+                }
+                
+                // Animate each step
+                for (let i = 0; i < animationData.steps.length; i++) {
+                    const step = animationData.steps[i];
+                    
+                    // Clear previous ship position
+                    if (i === 0) {
+                        const prevCell = document.getElementById(`cell-${currentPos[0]}-${currentPos[1]}`);
+                        if (prevCell) {
+                            prevCell.className = 'cell water';
+                            prevCell.textContent = ' ';
+                        }
+                    } else {
+                        const prevStep = animationData.steps[i - 1];
+                        const prevCell = document.getElementById(`cell-${prevStep.position[0]}-${prevStep.position[1]}`);
+                        if (prevCell) {
+                            prevCell.className = 'cell water';
+                            prevCell.textContent = ' ';
+                        }
+                    }
+                    
+                    // Show ship at current step
+                    const stepCell = document.getElementById(`cell-${step.position[0]}-${step.position[1]}`);
+                    if (stepCell) {
+                        stepCell.className = 'cell ship moving';
+                        stepCell.textContent = '⚓';
+                        
+                        // Show encounter message if any
+                        if (step.encounter) {
+                            console.log(`Step ${i + 1}: ${step.encounter.message}`);
+                        }
+                    }
+                    
+                    // Wait before next step
+                    if (i < animationData.steps.length - 1) {
+                        await new Promise(resolve => setTimeout(resolve, step.delay_ms));
+                    }
+                }
+                
+                // Final update with complete map state
+                this.updateMap(mapData, finalShipPosition, status);
+            }
+            
+            updateMap(mapData, shipPosition, status) {
+                // Get pursuing entities for visual effects
+                const pursuingEntities = status ? status.pursuing_entities || [] : [];
+                const pursuingPositions = new Set(
+                    pursuingEntities.map(entity => `${entity.position[0]},${entity.position[1]}`)
+                );
+                
                 // Clear all cells first
                 for (let y = 0; y < 30; y++) {
                     for (let x = 0; x < 30; x++) {
@@ -450,10 +578,18 @@ Think like an experienced pirate captain - bold but calculated, treasure-focused
                                 case 'E':
                                     cell.className += ' enemy';
                                     cell.textContent = '!';
+                                    // Add pursuing class if this enemy is actively chasing
+                                    if (pursuingPositions.has(`${x},${y}`)) {
+                                        cell.className += ' pursuing';
+                                    }
                                     break;
                                 case 'M':
                                     cell.className += ' monster';
                                     cell.textContent = 'M';
+                                    // Add pursuing class if this monster is actively chasing
+                                    if (pursuingPositions.has(`${x},${y}`)) {
+                                        cell.className += ' pursuing';
+                                    }
                                     break;
                             }
                         }

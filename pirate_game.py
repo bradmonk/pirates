@@ -78,7 +78,7 @@ class PirateGame:
                     # Give server a moment to start
                     time.sleep(2)
                     # Open browser automatically
-                    open_browser("http://localhost:8000/web_frontend.html")
+                    open_browser("http://localhost:8000")
                 else:  # matplotlib fallback
                     from gui_display import PirateGameGUI
                     self.gui = PirateGameGUI(self.game_state)
@@ -120,7 +120,13 @@ class PirateGame:
         use_openai = is_openai_model(model_name)
         
         print(f"\\n🤖 Initializing AI agents with {'OpenAI' if use_openai else 'Ollama'} model: {model_name}")
-        self.agents = PirateGameAgents(self.game_state, model_name, use_openai)
+        
+        # Get system prompts from GUI if available
+        system_prompts = None
+        if self.gui and hasattr(self.gui, 'system_prompts'):
+            system_prompts = self.gui.system_prompts
+        
+        self.agents = PirateGameAgents(self.game_state, model_name, use_openai, system_prompts, self.gui)
         
         print("\\n🚢 Setting sail...")
         print("\\n" + "="*80)
@@ -140,6 +146,10 @@ class PirateGame:
                 print("\\n🛑 GAME STOP REQUESTED VIA WEB INTERFACE")
                 print("🚢 Anchoring ship and ending voyage...")
                 break
+            
+            # Check if system prompts were updated via web UI
+            if self.use_gui and self.gui and hasattr(self.gui, 'system_prompts') and self.agents:
+                self.agents.update_system_prompts(self.gui.system_prompts)
                 
             turn_count += 1
             print(f"\\n{'='*30} TURN {turn_count} BEGINS {'='*30}")

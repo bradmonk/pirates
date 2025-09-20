@@ -4,241 +4,120 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pirate Game - AI Agents</title>
-    <style>
-        body {
-            font-family: 'Courier New', monospace;
-            background-color: #16213e;
-            color: #eee;
-            margin: 0;
-            padding: 20px;
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            display: grid;
-            grid-template-columns: 1fr 300px;
-            gap: 20px;
-        }
-        
-        .game-area {
-            background-color: #16213e;
-            border-radius: 10px;
-            padding: 20px;
-        }
-        
-        .game-controls {
-            background-color: #0f3460;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-        
-        .model-selector {
-            margin: 10px 0;
-        }
-        
-        .model-selector select {
-            background-color: #1a1a2e;
-            color: #eee;
-            border: 2px solid #f39c12;
-            border-radius: 5px;
-            padding: 8px 12px;
-            font-family: inherit;
-            font-size: 14px;
-            min-width: 200px;
-        }
-        
-        .start-button {
-            background-color: #f39c12;
-            color: #000;
-            border: none;
-            border-radius: 5px;
-            padding: 12px 24px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            margin: 10px;
-            transition: background-color 0.3s;
-        }
-        
-        .start-button:hover {
-            background-color: #e67e22;
-        }
-        
-        .start-button:disabled {
-            background-color: #7f8c8d;
-            cursor: not-allowed;
-        }
-        
-        .stop-button {
-            background-color: #e74c3c;
-            color: #fff;
-            border: none;
-            border-radius: 5px;
-            padding: 12px 24px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            margin: 10px;
-            transition: background-color 0.3s;
-            display: none;
-        }
-        
-        .stop-button:hover {
-            background-color: #c0392b;
-        }
-        
-        .stop-button:disabled {
-            background-color: #7f8c8d;
-            cursor: not-allowed;
-        }
-        
-        .game-status {
-            margin: 10px 0;
-            padding: 10px;
-            background-color: #1a1a2e;
-            border-radius: 5px;
-            border-left: 4px solid #27ae60;
-        }
-        
-        .status-panel {
-            background-color: #0f3460;
-            border-radius: 10px;
-            padding: 20px;
-        }
-        
-        .map-grid {
-            display: grid;
-            grid-template-columns: repeat(30, 20px);
-            grid-template-rows: repeat(30, 20px);
-            gap: 1px;
-            margin: 20px 0;
-            justify-content: center;
-        }
-        
-        .cell {
-            width: 20px;
-            height: 20px;
-            border: 1px solid #333;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            font-weight: bold;
-        }
-        
-        .water { background-color: #2980b9; color: #fff; }
-        .land { background-color: #8b4513; color: #fff; }
-        .treasure { background-color: #f1c40f; color: #000; }
-        .enemy { background-color: #e74c3c; color: #fff; }
-        .monster { background-color: #8e44ad; color: #fff; }
-        .ship { background-color: #00ff00; color: #000; animation: pulse 2s infinite; }
-        
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-            100% { transform: scale(1); }
-        }
-        
-        .status-info {
-            background-color: #1a1a2e;
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 15px;
-            border-left: 4px solid #f39c12;
-        }
-        
-        .agent-log {
-            background-color: #1a1a2e;
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 10px;
-            max-height: 300px;
-            overflow-y: auto;
-            font-size: 12px;
-        }
-        
-        .navigator { border-left: 4px solid #3498db; }
-        .cannoneer { border-left: 4px solid #e74c3c; }
-        .captain { border-left: 4px solid #f39c12; }
-        
-        h1 {
-            text-align: center;
-            color: #f39c12;
-            margin-bottom: 20px;
-        }
-        
-        h3 {
-            color: #f39c12;
-            margin-top: 0;
-        }
-        
-        .legend {
-            display: flex;
-            gap: 15px;
-            justify-content: center;
-            margin: 10px 0;
-            flex-wrap: wrap;
-        }
-        
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-        
-        .legend-color {
-            width: 15px;
-            height: 15px;
-            border: 1px solid #333;
-        }
-    </style>
+    <!-- Google Material Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+    <!-- External CSS -->
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
-        <div class="game-area">
-            <h1>🏴‍☠️ AI Pirate Adventure</h1>
+        <div class="system-prompts-panel">
+            <h3><span class="material-symbols-outlined">settings</span> System Prompts</h3>
             
-            <div class="game-controls">
-                <div class="model-selector">
-                    <label for="modelSelect">Select Ollama Model:</label>
-                    <select id="modelSelect">
+            <div class="prompt-editor">
+                <h4><span class="material-symbols-outlined">navigation</span> Navigator</h4>
+                <textarea id="navigatorPrompt" class="prompt-textarea" rows="6" placeholder="Navigator system prompt...">You are the Navigator of a pirate ship. Your role is to scan the environment and provide a reconnaissance report to help the Captain make informed decisions.
+
+IMPORTANT GAME MECHANICS:
+- Ship can move up to 3 tiles per turn in cardinal directions (North/South/East/West)
+- Each treasure collected rewards 2 cannonballs
+- Ship starts with 25 cannonballs, cannons cost 1 cannonball per shot
+- Illegal moves through land barriers will be blocked with explanation
+
+Your responsibilities:
+- Scan the surrounding area for treasures, enemies, monsters, and obstacles
+- Make ship movement recommendations based on your observations
+- Consider multi-tile movement possibilities when recommending paths
+
+BE BRIEF in your analysis.
+
+Start by using the navigate_scan tool to gather information.</textarea>
+            </div>
+            
+            <div class="prompt-editor">
+                <h4><span class="material-symbols-outlined">gps_fixed</span> Cannoneer</h4>
+                <textarea id="cannoneerPrompt" class="prompt-textarea" rows="6" placeholder="Cannoneer system prompt...">You are the Cannoneer of a pirate ship. Your role is to handle all combat operations and protect the crew.
+
+IMPORTANT GAME MECHANICS:
+- Combat cost 1 cannonball per shot (limited ammunition!)
+- Ship starts with 25 cannonballs total
+- Each treasure collected rewards 2 cannonballs
+- Cannon range is 2 tiles (Manhattan distance)
+- Must conserve ammunition for critical threats
+
+Your responsibilities:
+- Identify hostile targets within cannon range (2 tiles Manhattan distance)
+- Execute cannon fire when tactically advantageous AND ammunition allows
+- Monitor cannonball supply and advise on ammunition conservation
+- Coordinate with Navigator for threat assessment
+- Provide detailed tactical analysis considering resource constraints
+
+BE EXTREMELY VERBOSE AND DETAILED in your combat analysis. Explain:
+- Current cannonball count and ammunition status
+- What targets you can see and their threat levels
+- Whether ammunition expenditure is justified for each target
+- Your targeting priorities and resource management reasoning
+- Whether to engage or conserve ammunition and why
+- Combat recommendations for the Captain
+
+Think like a seasoned naval combat expert with limited ammunition. Every shot counts!</textarea>
+            </div>
+            
+            <div class="prompt-editor">
+                <h4><span class="material-symbols-outlined">person</span> Captain</h4>
+                <textarea id="captainPrompt" class="prompt-textarea" rows="6" placeholder="Captain system prompt...">You are the Captain of a pirate ship. You make the final decisions on movement, strategy, and crew coordination.
+
+IMPORTANT GAME MECHANICS:
+- Ship can move up to 3 tiles per turn in cardinal directions (North/South/East/West)
+- Movement through land barriers is IMPOSSIBLE - such moves will fail
+- Each treasure collected rewards 2 cannonballs
+- Ship starts with 25 cannonballs, cannons cost 1 cannonball per shot
+- Failed moves will explain why they're illegal (e.g., "Path blocked by land at (x,y)")
+
+Your responsibilities:
+- Analyze comprehensive reports from Navigator and Cannoneer
+- Make strategic movement decisions using the new 3-tile movement range
+- Coordinate the crew's actions and overall mission strategy
+- Balance risk vs reward, considering cannonball economy
+- Prioritize crew survival while pursuing the treasure hunting mission
+
+BE EXTREMELY VERBOSE AND DETAILED in your command decisions. Provide:
+- Analysis of all available intelligence from your crew
+- Evaluation of multi-tile movement options and their risks/benefits  
+- Strategic reasoning behind your chosen course of action
+- Risk assessment and contingency thinking
+- Clear movement commands with full justification
+
+Consider these priorities in order:
+1. Crew survival (avoid unnecessary damage)
+2. Treasure acquisition (move toward valuable targets using extended range)
+3. Tactical positioning (maintain strategic advantage)
+4. Resource management (conserve cannonballs when possible)
+5. Threat elimination (when safe and beneficial)
+
+Think like an experienced pirate captain - bold but calculated, treasure-focused but not reckless.</textarea>
+            </div>
+            
+            <button id="updatePrompts" class="update-prompts-button">
+                <span class="material-symbols-outlined">save</span> Update Prompts
+            </button>
+        </div>
+        
+        <div class="game-area">
+            <div class="header-bar">
+                <h2><span class="material-symbols-outlined">sailing</span> AI Pirate Adventure</h2>
+                <div class="quick-controls">
+                    <select id="modelSelect" class="compact-select">
                         <option value="">Loading models...</option>
                     </select>
-                </div>
-                <button id="startButton" class="start-button" disabled>Start Game</button>
-                <button id="stopButton" class="stop-button">Stop Game</button>
-                <div id="gameStatus" class="game-status" style="display: none;">
-                    Game Status: <span id="statusText">Ready</span>
+                    <button id="startButton" class="compact-button start" disabled><span class="material-symbols-outlined">play_arrow</span> Start</button>
+                    <button id="stopButton" class="compact-button stop"><span class="material-symbols-outlined">stop</span> Stop</button>
                 </div>
             </div>
             
-            <div class="legend">
-                <div class="legend-item">
-                    <div class="legend-color water"></div>
-                    <span>Water</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color land"></div>
-                    <span>Land</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color treasure"></div>
-                    <span>Treasure</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color enemy"></div>
-                    <span>Enemy</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color monster"></div>
-                    <span>Monster</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color ship"></div>
-                    <span>Your Ship</span>
-                </div>
+            <div id="gameStatus" class="game-status-compact" style="display: none;">
+                <span id="statusText">Ready</span>
             </div>
             
             <div id="map-container" class="map-grid">
@@ -247,33 +126,77 @@
         </div>
         
         <div class="status-panel">
+            <div class="legend">
+                <h4><span class="material-symbols-outlined">map</span> Map Legend</h4>
+                <div class="legend-grid">
+                    <div class="legend-item">
+                        <div class="legend-color water"></div>
+                        <span>Water</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color land"></div>
+                        <span>Land</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color treasure"></div>
+                        <span>Treasure</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color enemy"></div>
+                        <span>Enemy</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color monster"></div>
+                        <span>Monster</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color ship"></div>
+                        <span>Your Ship</span>
+                    </div>
+                </div>
+            </div>
+            
             <div class="status-info">
                 <h3>Ship Status</h3>
                 <div id="ship-status">
-                    <p><strong>Score:</strong> <span id="score">Loading...</span></p>
-                    <p>Position: <span id="position">Loading...</span></p>
-                    <p>Lives: <span id="lives">Loading...</span></p>
-                    <p>Treasures: <span id="treasures">Loading...</span> / <span id="total_treasures">Loading...</span></p>
-                    <p>Enemies Defeated: <span id="enemies_defeated">Loading...</span></p>
-                    <p>Monsters Defeated: <span id="monsters_defeated">Loading...</span></p>
-                    <p>Cannonballs: <span id="cannonballs">Loading...</span></p>
-                    <p>Turn: <span id="turn">Loading...</span></p>
+                    <p><strong>Lives:</strong> <span id="lives">Loading...</span> | <strong>Score:</strong> <span id="score">Loading...</span></p>
+                    <p><strong>Treasures:</strong> <span id="treasures">Loading...</span>/<span id="total_treasures">Loading...</span> | <strong>Turn:</strong> <span id="turn">Loading...</span></p>
+                    <p><strong>Pos:</strong> <span id="position">Loading...</span> | <strong>Ammo:</strong> <span id="cannonballs">Loading...</span></p>
                 </div>
             </div>
             
             <div class="agent-log navigator">
-                <h3>🧭 Navigator</h3>
-                <div id="navigator-log">Waiting for navigator report...</div>
+                <h3><span class="material-symbols-outlined">navigation</span> Navigator LLM</h3>
+                <div id="navigator-log">Waiting for navigator response...</div>
             </div>
             
             <div class="agent-log cannoneer">
-                <h3>⚔️ Cannoneer</h3>
-                <div id="cannoneer-log">Waiting for cannoneer report...</div>
+                <h3><span class="material-symbols-outlined">gps_fixed</span> Cannoneer LLM</h3>
+                <div id="cannoneer-log">Waiting for cannoneer response...</div>
             </div>
             
             <div class="agent-log captain">
-                <h3>👨‍✈️ Captain</h3>
-                <div id="captain-log">Waiting for captain report...</div>
+                <h3><span class="material-symbols-outlined">person</span> Captain LLM</h3>
+                <div id="captain-log">Waiting for captain response...</div>
+            </div>
+            
+            <div class="tool-outputs">
+                <h3><span class="material-symbols-outlined">build</span> Tool Outputs</h3>
+                
+                <div class="tool-log move">
+                    <h4><span class="material-symbols-outlined">directions</span> Move</h4>
+                    <div id="move-log">No movement yet...</div>
+                </div>
+                
+                <div class="tool-log fire-cannon">
+                    <h4><span class="material-symbols-outlined">local_fire_department</span> Fire Cannon</h4>
+                    <div id="fire-cannon-log">No cannon fire yet...</div>
+                </div>
+                
+                <div class="tool-log scan">
+                    <h4><span class="material-symbols-outlined">radar</span> Scan Area</h4>
+                    <div id="scan-log">No scans yet...</div>
+                </div>
             </div>
         </div>
     </div>
@@ -304,6 +227,11 @@
                 const stopButton = document.getElementById('stopButton');
                 stopButton.addEventListener('click', () => {
                     this.stopGame();
+                });
+                
+                const updatePromptsButton = document.getElementById('updatePrompts');
+                updatePromptsButton.addEventListener('click', () => {
+                    this.updateSystemPrompts();
                 });
             }
             
@@ -489,6 +417,7 @@
                 this.updateMap(gameState.map, gameState.ship_position);
                 this.updateStatus(gameState.status);
                 this.updateAgentLogs(gameState.agent_reports);
+                this.updateToolLogs(gameState.tool_outputs);
             }
             
             updateMap(mapData, shipPosition) {
@@ -535,14 +464,9 @@
             updateStatus(status) {
                 const statusDiv = document.getElementById('ship-status');
                 statusDiv.innerHTML = `
-                    <p><strong>Score:</strong> ${status.score || 0}</p>
-                    <p>Position: (${status.ship_position[0]}, ${status.ship_position[1]})</p>
-                    <p>Lives: ${'❤️'.repeat(status.lives)} ${status.lives}/3</p>
-                    <p>Treasures: ${status.treasures_collected}/${status.total_treasures}</p>
-                    <p>Enemies Defeated: ${status.enemies_defeated || 0}</p>
-                    <p>Monsters Defeated: ${status.monsters_defeated || 0}</p>
-                    <p>Cannonballs: ${status.cannonballs || 25}</p>
-                    <p>Turn: ${status.turn_count}</p>
+                    <p><strong>Lives:</strong> ${'❤️'.repeat(status.lives)} ${status.lives}/3 | <strong>Score:</strong> ${status.score || 0}</p>
+                    <p><strong>Treasures:</strong> ${status.treasures_collected}/${status.total_treasures} | <strong>Turn:</strong> ${status.turn_count}</p>
+                    <p><strong>Pos:</strong> (${status.ship_position[0]}, ${status.ship_position[1]}) | <strong>Ammo:</strong> ${status.cannonballs || 25}</p>
                 `;
             }
             
@@ -555,6 +479,66 @@
                 }
                 if (reports.captain) {
                     document.getElementById('captain-log').innerHTML = reports.captain.replace(/\n/g, '<br>');
+                }
+            }
+            
+            updateToolLogs(toolOutputs) {
+                if (toolOutputs) {
+                    if (toolOutputs.move) {
+                        document.getElementById('move-log').innerHTML = toolOutputs.move.replace(/\n/g, '<br>');
+                    }
+                    if (toolOutputs.fire_cannon) {
+                        document.getElementById('fire-cannon-log').innerHTML = toolOutputs.fire_cannon.replace(/\n/g, '<br>');
+                    }
+                    if (toolOutputs.scan) {
+                        document.getElementById('scan-log').innerHTML = toolOutputs.scan.replace(/\n/g, '<br>');
+                    }
+                }
+            }
+            
+            async updateSystemPrompts() {
+                const navigatorPrompt = document.getElementById('navigatorPrompt').value;
+                const cannoneerPrompt = document.getElementById('cannoneerPrompt').value;
+                const captainPrompt = document.getElementById('captainPrompt').value;
+                
+                try {
+                    const response = await fetch('/update_prompts', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            navigator: navigatorPrompt,
+                            cannoneer: cannoneerPrompt,
+                            captain: captainPrompt
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        // Show visual feedback
+                        const button = document.getElementById('updatePrompts');
+                        const originalText = button.innerHTML;
+                        button.innerHTML = '<span class="material-symbols-outlined">check</span> Updated!';
+                        button.style.backgroundColor = '#27ae60';
+                        
+                        setTimeout(() => {
+                            button.innerHTML = originalText;
+                            button.style.backgroundColor = '';
+                        }, 2000);
+                    }
+                } catch (error) {
+                    console.error('Error updating prompts:', error);
+                    
+                    // Show error feedback
+                    const button = document.getElementById('updatePrompts');
+                    const originalText = button.innerHTML;
+                    button.innerHTML = '<span class="material-symbols-outlined">error</span> Error';
+                    button.style.backgroundColor = '#e74c3c';
+                    
+                    setTimeout(() => {
+                        button.innerHTML = originalText;
+                        button.style.backgroundColor = '';
+                    }, 2000);
                 }
             }
             

@@ -137,7 +137,7 @@ class PirateGameAgents:
         """Setup tools that agents can use"""
         
         @tool
-        def navigate_scan(radius: int = 3) -> Dict[str, Any]:
+        def navigate_scan(radius: int = 5) -> Dict[str, Any]:
             """Scan the environment around the ship for treasures, enemies, and obstacles."""
             return self.game_tools.navigator.scan_surroundings(radius)
         
@@ -189,7 +189,7 @@ class PirateGameAgents:
             
             # Get current game status first
             status = self.game_tools.get_game_status()
-            scan_result = self.game_tools.navigator.scan_surroundings(radius=3)
+            scan_result = self.game_tools.navigator.scan_surroundings(radius=5)
             
             print(f"🧭 NAVIGATOR: Scan complete. Found {len(scan_result['treasures_nearby'])} treasures, {len(scan_result['enemies_nearby'])} enemies, {len(scan_result['monsters_nearby'])} monsters in area.")
             

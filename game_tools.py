@@ -10,7 +10,7 @@ class NavigatorTool:
     def __init__(self, game_state: GameState):
         self.game_state = game_state
     
-    def scan_surroundings(self, radius: int = 3) -> Dict[str, Any]:
+    def scan_surroundings(self, radius: int = 5) -> Dict[str, Any]:
         """Scan the area around the ship and return information about surroundings"""
         ship_pos = self.game_state.ship_position
         surrounding_cells = self.game_state.game_map.get_surrounding_cells(ship_pos, radius)

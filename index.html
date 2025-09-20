@@ -7,6 +7,7 @@
     <!-- Google Material Icons -->
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+    <link href='https://fonts.googleapis.com/css?family=ABeeZee|Muli|Almendra+SC|Almarai' rel='stylesheet'>
     <!-- External CSS -->
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -14,8 +15,8 @@
     <div class="container">
         <div class="system-prompts-panel">
             <!-- Move model dropdown to top of system prompts panel -->
+            <h3><span class="material-symbols-outlined">smart_toy</span> LLM Model</h3>
             <div class="model-selector-top">
-                <h4><span class="material-symbols-outlined">smart_toy</span> LLM Model</h4>
                 <select id="modelSelect" class="model-select">
                     <option value="">Loading models...</option>
                 </select>
@@ -144,6 +145,7 @@
                 this.initializeMap();
                 this.loadAvailableModels();
                 this.loadSystemPrompts();
+                this.loadInitialGameStatus();
             }
             
             initializeControls() {
@@ -265,6 +267,21 @@
                 }
             }
             
+            async loadInitialGameStatus() {
+                try {
+                    const response = await fetch('/game_state.json');
+                    if (response.ok) {
+                        const gameState = await response.json();
+                        this.updateStatus(gameState.status);
+                        this.updateMap(gameState.map, gameState.ship_position, gameState.status);
+                        console.log('Initial game status loaded');
+                    }
+                } catch (error) {
+                    console.error('Could not load initial game status:', error);
+                    // Keep the "Loading..." placeholders if fetch fails
+                }
+            }
+            
             async startGame() {
                 if (!this.selectedModel) return;
                 
@@ -343,7 +360,7 @@
                     }
                 } catch (error) {
                     console.error('Error stopping game:', error);
-                    statusText.textContent = 'Error stopping game';
+                    statusText.textContent = 'Stopping game...';
                 } finally {
                     stopButton.disabled = false;
                     stopButton.textContent = 'Stop Game';
@@ -554,9 +571,12 @@
             
             updateStatus(status) {
                 const statusDiv = document.getElementById('ship-status');
+                const totalEnemies = (status.total_enemies || 0) + (status.total_monsters || 0);
+                const enemiesSunk = (status.enemies_defeated || 0) + (status.monsters_defeated || 0);
+                
                 statusDiv.innerHTML = `
                     <p><strong>Lives:</strong> ${'❤️'.repeat(status.lives)} ${status.lives}/3 | <strong>Score:</strong> ${status.score || 0}</p>
-                    <p><strong>Treasures:</strong> ${status.treasures_collected}/${status.total_treasures} | <strong>Turn:</strong> ${status.turn_count}</p>
+                    <p><strong>Treasures:</strong> ${status.treasures_collected}/${status.total_treasures} | <strong>Enemies Sunk:</strong> ${enemiesSunk}/${totalEnemies} | <strong>Turn:</strong> ${status.turn_count}</p>
                     <p><strong>Pos:</strong> (${status.ship_position[0]}, ${status.ship_position[1]}) | <strong>Ammo:</strong> ${status.cannonballs || 25}</p>
                 `;
             }

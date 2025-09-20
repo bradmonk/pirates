@@ -153,6 +153,10 @@ class GameState:
         
         # Count initial treasures
         self.total_treasures = len(self.game_map.find_cell_type(CellType.TREASURE))
+        
+        # Count initial enemies and monsters
+        self.total_enemies = len(self.game_map.find_cell_type(CellType.ENEMY))
+        self.total_monsters = len(self.game_map.find_cell_type(CellType.MONSTER))
     
     def _find_initial_ship_position(self) -> Position:
         """Find the initial ship position from the map"""
@@ -543,6 +547,8 @@ class GameState:
             "score": self.score,
             "enemies_defeated": self.enemies_defeated,
             "monsters_defeated": self.monsters_defeated,
+            "total_enemies": self.total_enemies,
+            "total_monsters": self.total_monsters,
             "turn_count": self.turn_count,
             "game_over": self.game_over,
             "victory": self.victory,

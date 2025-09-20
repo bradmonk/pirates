@@ -20,19 +20,6 @@ pgrep -f "python" | while read pid; do
     lsof -p "$pid" 2>/dev/null | grep -q "WindowServer\|CoreGraphics" && kill "$pid" 2>/dev/null || true
 done
 
-# Force close any matplotlib/Python GUI windows that might be stuck
-echo "  - Closing matplotlib windows..."
-osascript -e '
-tell application "System Events"
-    set pythonProcesses to (every process whose name contains "Python" or name contains "python")
-    repeat with proc in pythonProcesses
-        try
-            tell proc to close (every window)
-        end try
-    end repeat
-end tell
-' 2>/dev/null || true
-
 # Also kill any orphaned matplotlib backends
 pkill -f "matplotlib" 2>/dev/null || true
 pkill -f "backend" 2>/dev/null || true

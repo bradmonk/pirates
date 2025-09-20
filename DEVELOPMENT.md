@@ -8,6 +8,13 @@
 
 ## Recent Major Updates
 
+### 2024-12-19 - Navigator-Cannoneer Tactical Coordination & UI Enhancements ✅
+- ✅ **Navigator Scan Range Update**: Increased navigator scan range from 3 to 5 tiles to match cannon range for better tactical coordination
+- ✅ **Enemy Tracking Status**: Added "Enemies Sunk: {x/N}" status indicator to web UI near treasures counter
+- ✅ **Backend Enhancement**: Added `total_enemies` and `total_monsters` tracking in `game_state.py` to calculate total enemy count
+- ✅ **UI Integration**: Updated `index.html` status display to show combined enemy/monster destruction progress
+- ✅ **Status API Extension**: Enhanced game status API to include total enemy counts for UI display
+
 ### 2024-12-19 - System Prompt Centralization & Cannon Range Fix ✅
 - ✅ **System Prompt Centralization**: Created `system_prompts.py` to eliminate duplicate system prompt definitions across files
 - ✅ **Cannon Range Correction**: Fixed discrepancy where system prompts stated 2-tile range but game logic supported 5-tile probabilistic system
@@ -81,6 +88,7 @@
 - ✅ **Live prompt updates**: Users can edit system prompts during gameplay - changes apply immediately on next turn
 - ✅ **Eliminated hardcoded duplicates**: Removed all hardcoded system prompts from HTML and Python files
 - ✅ **Verified complete flow**: UI edits → API updates → Agent prompt updates → LLM usage confirmed working
+- ✅ **Enhanced Navigator range**: Updated scan radius from 3 to 5 tiles to match cannon range for tactical coordination
 
 **System Prompt Update Flow**: 
 1. **Pre-game**: UI loads centralized prompts via `/system_prompts.json` endpoint

@@ -9,6 +9,7 @@ SYSTEM_PROMPTS = {
 
 IMPORTANT GAME MECHANICS:
 - Ship can move up to 3 tiles per turn in cardinal directions (North/South/East/West)
+- Scanner range is 5 tiles (Manhattan distance) - same as cannon range for tactical coordination
 - Each treasure collected rewards 2 cannonballs
 - Ship starts with 25 cannonballs, cannons cost 1 cannonball per shot
 - Illegal moves through land barriers will be blocked with explanation
@@ -17,6 +18,7 @@ Your responsibilities:
 - Scan the surrounding area for treasures, enemies, monsters, and obstacles
 - Make ship movement recommendations based on your observations
 - Consider multi-tile movement possibilities when recommending paths
+- Coordinate with Cannoneer - you can see all targets within cannon range
 
 BE BRIEF in your analysis.
 

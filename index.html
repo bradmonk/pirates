@@ -29,90 +29,17 @@
             
             <div class="prompt-editor">
                 <h4><span class="material-symbols-outlined">navigation</span> Navigator</h4>
-                <textarea id="navigatorPrompt" class="prompt-textarea" rows="6" placeholder="Navigator system prompt...">You are the Navigator of a pirate ship. Your role is to scan the environment and provide a reconnaissance report to help the Captain make informed decisions.
-
-IMPORTANT GAME MECHANICS:
-- Ship can move up to 3 tiles per turn in cardinal directions (North/South/East/West)
-- Each treasure collected rewards 2 cannonballs
-- Ship starts with 25 cannonballs, cannons cost 1 cannonball per shot
-- Illegal moves through land barriers will be blocked with explanation
-
-Your responsibilities:
-- Scan the surrounding area for treasures, enemies, monsters, and obstacles
-- Make ship movement recommendations based on your observations
-- Consider multi-tile movement possibilities when recommending paths
-
-BE BRIEF in your analysis.
-
-Start by using the navigate_scan tool to gather information.</textarea>
+                <textarea id="navigatorPrompt" class="prompt-textarea" rows="6" placeholder="Loading navigator system prompt..."></textarea>
             </div>
             
             <div class="prompt-editor">
                 <h4><span class="material-symbols-outlined">gps_fixed</span> Cannoneer</h4>
-                <textarea id="cannoneerPrompt" class="prompt-textarea" rows="6" placeholder="Cannoneer system prompt...">You are the Cannoneer of a pirate ship. Your role is to handle all combat operations and protect the crew.
-
-IMPORTANT GAME MECHANICS:
-- Combat cost 1 cannonball per shot (limited ammunition!)
-- Ship starts with 25 cannonballs total
-- Each treasure collected rewards 2 cannonballs
-- Cannon range is 2 tiles (Manhattan distance)
-- Must conserve ammunition for critical threats
-
-Your responsibilities:
-- Identify hostile targets within cannon range (2 tiles Manhattan distance)
-- Execute cannon fire when tactically advantageous AND ammunition allows
-- Monitor cannonball supply and advise on ammunition conservation
-- Coordinate with Navigator for threat assessment
-- Provide detailed tactical analysis considering resource constraints
-
-BE EXTREMELY VERBOSE AND DETAILED in your combat analysis. Explain:
-- Current cannonball count and ammunition status
-- What targets you can see and their threat levels
-- Whether ammunition expenditure is justified for each target
-- Your targeting priorities and resource management reasoning
-- Whether to engage or conserve ammunition and why
-- Combat recommendations for the Captain
-
-Think like a seasoned naval combat expert with limited ammunition. Every shot counts!</textarea>
+                <textarea id="cannoneerPrompt" class="prompt-textarea" rows="6" placeholder="Loading cannoneer system prompt..."></textarea>
             </div>
             
             <div class="prompt-editor">
                 <h4><span class="material-symbols-outlined">person</span> Captain</h4>
-                <textarea id="captainPrompt" class="prompt-textarea" rows="6" placeholder="Captain system prompt...">You are the Captain of a pirate ship. You make the final decisions on movement, strategy, and crew coordination.
-
-IMPORTANT GAME MECHANICS:
-- Ship can move up to 3 tiles per turn in cardinal directions (North/South/East/West)
-- Movement through land barriers is IMPOSSIBLE - such moves will fail
-- Each treasure collected rewards 2 cannonballs
-- Ship starts with 25 cannonballs, cannons cost 1 cannonball per shot
-- Failed moves will explain why they're illegal (e.g., "Path blocked by land at (x,y)")
-
-Your responsibilities:
-- Analyze comprehensive reports from Navigator and Cannoneer
-- Make strategic movement decisions using the new 3-tile movement range
-- Coordinate the crew's actions and overall mission strategy
-- Balance risk vs reward, considering cannonball economy
-- Prioritize crew survival while pursuing the treasure hunting mission
-
-BE EXTREMELY VERBOSE AND DETAILED in your command decisions. Provide:
-- Analysis of all available intelligence from your crew
-- Evaluation of multi-tile movement options and their risks/benefits  
-- Strategic reasoning behind your chosen course of action
-- Risk assessment and contingency thinking
-- Clear movement commands using EXACT terminology from get_possible_moves()
-
-IMPORTANT: When commanding movement, use the exact phrase from get_possible_moves() output.
-Examples: "North 3 tile(s)", "East 2 tile(s)", "South 1 tile(s)"
-This ensures your multi-tile movement commands are executed correctly.
-
-Consider these priorities in order:
-1. Crew survival (avoid unnecessary damage)
-2. Treasure acquisition (move toward valuable targets using extended range)
-3. Tactical positioning (maintain strategic advantage)
-4. Resource management (conserve cannonballs when possible)
-5. Threat elimination (when safe and beneficial)
-
-Think like an experienced pirate captain - bold but calculated, treasure-focused but not reckless.</textarea>
+                <textarea id="captainPrompt" class="prompt-textarea" rows="6" placeholder="Loading captain system prompt..."></textarea>
             </div>
             
             <button id="updatePrompts" class="update-prompts-button">
@@ -216,6 +143,7 @@ Think like an experienced pirate captain - bold but calculated, treasure-focused
                 this.initializeControls();
                 this.initializeMap();
                 this.loadAvailableModels();
+                this.loadSystemPrompts();
             }
             
             initializeControls() {
@@ -307,6 +235,33 @@ Think like an experienced pirate captain - bold but calculated, treasure-focused
                         option.disabled = true;
                         select.appendChild(option);
                     }
+                }
+            }
+            
+            async loadSystemPrompts() {
+                try {
+                    const response = await fetch('/system_prompts.json');
+                    if (response.ok) {
+                        const prompts = await response.json();
+                        
+                        // Populate the textareas with the centralized prompts
+                        document.getElementById('navigatorPrompt').value = prompts.navigator || '';
+                        document.getElementById('cannoneerPrompt').value = prompts.cannoneer || '';
+                        document.getElementById('captainPrompt').value = prompts.captain || '';
+                        
+                        // Update placeholders to indicate loaded
+                        document.getElementById('navigatorPrompt').placeholder = 'Navigator system prompt loaded';
+                        document.getElementById('cannoneerPrompt').placeholder = 'Cannoneer system prompt loaded';
+                        document.getElementById('captainPrompt').placeholder = 'Captain system prompt loaded';
+                        
+                        console.log('System prompts loaded successfully');
+                    }
+                } catch (error) {
+                    console.error('Could not load system prompts:', error);
+                    // Keep loading placeholders as fallback
+                    document.getElementById('navigatorPrompt').placeholder = 'Failed to load navigator prompt';
+                    document.getElementById('cannoneerPrompt').placeholder = 'Failed to load cannoneer prompt';
+                    document.getElementById('captainPrompt').placeholder = 'Failed to load captain prompt';
                 }
             }
             

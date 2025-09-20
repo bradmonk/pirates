@@ -6,6 +6,23 @@
 - **Map System**: CSV-based 30x30 grid with Water, Land, Treasure, Enemies, Monsters
 - **AI Agents**: Navigator (scanning), Cannoneer (combat), Captain (strategy/movement)
 
+## Recent Major Updates
+
+### 2024-12-19 - System Prompt Centralization & Cannon Range Fix ✅
+- ✅ **System Prompt Centralization**: Created `system_prompts.py` to eliminate duplicate system prompt definitions across files
+- ✅ **Cannon Range Correction**: Fixed discrepancy where system prompts stated 2-tile range but game logic supported 5-tile probabilistic system
+- ✅ **Updated Game Tools**: Modified `game_tools.py` to correctly implement 5-tile cannon range with distance-based hit probabilities (1-tile: 95%, 2-tile: 90%, 3-tile: 75%, 4-tile: 50%, 5-tile: 25%)
+- ✅ **Centralized Configuration**: All agent system prompts now reference single source in `SYSTEM_PROMPTS` dictionary
+- ✅ **Import Fixes**: Resolved LangChain import issues (`ToolExecutor` → `ToolNode`, added missing `Optional`, `SystemMessage`, `HumanMessage`, `END`)
+- ✅ **Dependency Resolution**: Installed missing `langchain-community` package
+- ✅ **System Validation**: Successfully tested updated system with centralized prompts and correct cannon mechanics
+
+### 2024-12-19 - Enhanced Collision Detection System ✅
+- ✅ Added comprehensive position overlap checking for ship and enemy positions
+- ✅ Implemented `check_and_handle_position_overlaps()` method to detect same-tile occupancy
+- ✅ Enhanced enemy movement logic to trigger collisions when attempting to move into ship's tile
+- ✅ Added collision detection after both player ship movements and enemy movements
+
 ## Progress Updates
 
 ### 2024-12-19 - Initial Project Setup
@@ -42,12 +59,35 @@
 - ✅ Implemented turn-based gameplay with agent coordination
 - ✅ Created win/lose conditions and game state management
 - ✅ Added comprehensive error handling and user guidance
+- ✅ Updated game display to show collision messages and damage notifications
+- ✅ Ensures damage is properly applied when enemies and ship occupy the same tile
+- ✅ Prevents move-through exploits by checking positions before and after movements
 
-### 2024-12-19 - GUI Visualization System
-- ✅ Created `gui_display.py` using matplotlib for real-time visualization
-- ✅ Implemented color-coded map display (blue=water, brown=land, gold=treasure, red=enemies, purple=monsters)
-- ✅ Added ship position tracking and status information display
-- ✅ Created update mechanism for real-time game state visualization
+### 2024-12-19 - Visual Enhancements and Animations ✅
+- ✅ Added pursuit indicators: enemies within 3 tiles now have animated red glow effects
+- ✅ Implemented animated multi-tile movement with 400ms step-by-step progression
+- ✅ Enhanced CSS with pursuit-glow animations and movement transitions
+- ✅ Added `get_pursuing_entities()` method to track enemies actively chasing the ship
+- ✅ Created `get_movement_animation_data()` for detailed movement visualization
+- ✅ Updated web interface to handle animated movements and pursuit indicators
+- ✅ Improved player understanding of game mechanics and threat awareness
+
+### 2024-12-19 - System Prompt Centralization and Cannon Range Fix ✅
+- ✅ **Created centralized system prompts** in `system_prompts.py` to eliminate duplicate maintenance
+- ✅ **Fixed cannon range discrepancy**: Updated from incorrect 2-tile range to proper 5-tile probabilistic system
+- ✅ **Implemented 5-tile cannon mechanics**: Hit chances: 1-tile (95%), 2-tile (90%), 3-tile (75%), 4-tile (50%), 5-tile (25%)
+- ✅ **Updated all system references**: Modified `ai_agents.py`, `web_gui.py`, `game_tools.py` to use centralized prompts
+- ✅ **Dynamic prompt loading**: Web interface now loads system prompts from `/system_prompts.json` API endpoint  
+- ✅ **Live prompt updates**: Users can edit system prompts during gameplay - changes apply immediately on next turn
+- ✅ **Eliminated hardcoded duplicates**: Removed all hardcoded system prompts from HTML and Python files
+- ✅ **Verified complete flow**: UI edits → API updates → Agent prompt updates → LLM usage confirmed working
+
+**System Prompt Update Flow**: 
+1. **Pre-game**: UI loads centralized prompts via `/system_prompts.json` endpoint
+2. **User edits**: Modified prompts sent to `/update_prompts` endpoint, stored in web GUI
+3. **Game creation**: Agents initialized with current GUI system prompts 
+4. **Live updates**: Each turn checks for updated prompts and applies them to agents via `update_system_prompts()`
+5. **LLM usage**: Agents use updated prompts immediately for next LLM interactions
 
 ### 2024-12-19 - Web Interface Development
 - ✅ Implemented `web_gui.py` with HTTP server for browser-based interface

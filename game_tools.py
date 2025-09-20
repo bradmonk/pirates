@@ -91,30 +91,36 @@ class CannoneerTool:
         self.game_state = game_state
     
     def get_targets_in_range(self) -> List[Dict[str, Any]]:
-        """Get all hostile targets within cannon range (2 tiles)"""
+        """Get all hostile targets within cannon range (5 tiles)"""
         ship_pos = self.game_state.ship_position
         targets = []
         
-        # Check all positions within 2-tile radius (Manhattan distance)
-        for dx in range(-2, 3):  # -2, -1, 0, 1, 2
-            for dy in range(-2, 3):
+        # Check all positions within 5-tile radius (Manhattan distance)
+        for dx in range(-5, 6):  # -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5
+            for dy in range(-5, 6):
                 # Skip ship's position
                 if dx == 0 and dy == 0:
                     continue
                 
-                # Check if within 2-tile range (Manhattan distance)
+                # Check if within 5-tile range (Manhattan distance)
                 distance = abs(dx) + abs(dy)
-                if distance > 2:
+                if distance > 5:
                     continue
                 
                 target_pos = Position(ship_pos.x + dx, ship_pos.y + dy)
                 if self.game_state.game_map.is_valid_position(target_pos):
                     cell = self.game_state.game_map.get_cell(target_pos)
                     if cell in [CellType.ENEMY.value, CellType.MONSTER.value]:
+                        # Calculate hit probability based on distance
+                        hit_probabilities = {5: 0.25, 4: 0.50, 3: 0.75, 2: 0.90, 1: 0.95}
+                        hit_chance = hit_probabilities.get(distance, 0.25)
+                        
                         targets.append({
                             "position": (target_pos.x, target_pos.y),
                             "type": "Enemy" if cell == CellType.ENEMY.value else "Monster",
-                            "threat_level": "High" if cell == CellType.MONSTER.value else "Medium"
+                            "threat_level": "High" if cell == CellType.MONSTER.value else "Medium",
+                            "distance": distance,
+                            "hit_chance": hit_chance
                         })
         
         return targets
@@ -124,13 +130,13 @@ class CannoneerTool:
         target_pos = Position(target_x, target_y)
         ship_pos = self.game_state.ship_position
         
-        # Check range (2 tiles)
+        # Check range (5 tiles)
         distance = abs(target_pos.x - ship_pos.x) + abs(target_pos.y - ship_pos.y)
-        if distance > 2:
+        if distance > 5:
             return {
                 "success": False,
                 "message": f"Target at ({target_x}, {target_y}) is out of range (distance: {distance})",
-                "range_limit": 2,
+                "range_limit": 5,
                 "cannonballs_remaining": self.game_state.cannonballs
             }
         

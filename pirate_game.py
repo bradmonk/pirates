@@ -156,6 +156,11 @@ class PirateGame:
             print(f"📍 Current Status: Position {self.game_state.ship_position.x},{self.game_state.ship_position.y} | Lives: {self.game_state.lives} | Treasures: {self.game_state.treasures_collected}/{self.game_state.total_treasures}")
             print("="*80)
             
+            # Check for any pre-existing position overlaps at start of turn
+            pre_turn_collision = self.game_state.check_and_handle_position_overlaps()
+            if pre_turn_collision:
+                print(f"🚨 PRE-TURN COLLISION DETECTED: {pre_turn_collision}")
+            
             try:
                 # Let agents make decisions
                 print("🤖 AI CREW DELIBERATION COMMENCING...")
@@ -181,6 +186,9 @@ class PirateGame:
                     for movement in enemy_movements:
                         if movement.get('blocked', False):
                             print(f"🚫 {movement['entity_type']} at {movement['from']} blocked by terrain (distance: {movement['distance_to_ship']} tiles)")
+                        elif movement.get('collision', False):
+                            print(f"💥 {movement['entity_type']} moved from {movement['from']} → {movement['to']} - COLLISION WITH SHIP!")
+                            print(f"   {movement.get('message', 'Damage taken!')}")
                         else:
                             print(f"⚔️ {movement['entity_type']} moved from {movement['from']} → {movement['to']} (distance to ship: {movement['distance_to_ship']} tiles)")
                 else:

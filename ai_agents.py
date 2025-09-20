@@ -1,20 +1,23 @@
 """
-Pirate Game - AI Agents using LangGraph with Ollama and OpenAI
+AI Agents for the pirate game using LangGraph and Ollama
 """
-import subprocess
 import json
-import os
-from typing import Dict, List, Any, Optional
-from langchain_ollama import ChatOllama
+import random
+import re
+from typing import Dict, Any, List, Tuple, Optional
+from langchain_community.chat_models import ChatOllama
 from langchain_openai import ChatOpenAI
-from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
-from langchain_core.tools import tool
+from langchain_core.messages import SystemMessage, HumanMessage
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
+from langchain.tools import tool
 from typing_extensions import TypedDict
+import subprocess
+import os
 
-from game_state import GameState
 from game_tools import GameTools
+from game_state import GameState
+from system_prompts import SYSTEM_PROMPTS
 
 class GameAgentState(TypedDict):
     """State shared between all agents"""
@@ -98,80 +101,7 @@ class PirateGameAgents:
         self.web_gui = web_gui
         
         # Set default system prompts if none provided
-        self.system_prompts = system_prompts or {
-            'navigator': '''You are the Navigator of a pirate ship. Your role is to scan the environment and provide a reconnaissance report to help the Captain make informed decisions.
-
-IMPORTANT GAME MECHANICS:
-- Ship can move up to 3 tiles per turn in cardinal directions (North/South/East/West)
-- Each treasure collected rewards 2 cannonballs
-- Ship starts with 25 cannonballs, cannons cost 1 cannonball per shot
-- Illegal moves through land barriers will be blocked with explanation
-
-Your responsibilities:
-- Scan the surrounding area for treasures, enemies, monsters, and obstacles
-- Make ship movement recommendations based on your observations
-- Consider multi-tile movement possibilities when recommending paths
-
-BE BRIEF in your analysis.
-
-Start by using the navigate_scan tool to gather information.''',
-            'cannoneer': '''You are the Cannoneer of a pirate ship. Your role is to handle all combat operations and protect the crew.
-
-IMPORTANT GAME MECHANICS:
-- Combat cost 1 cannonball per shot (limited ammunition!)
-- Ship starts with 25 cannonballs total
-- Each treasure collected rewards 2 cannonballs
-- Cannon range is 2 tiles (Manhattan distance)
-- Must conserve ammunition for critical threats
-
-Your responsibilities:
-- Identify hostile targets within cannon range (2 tiles Manhattan distance)
-- Execute cannon fire when tactically advantageous AND ammunition allows
-- Monitor cannonball supply and advise on ammunition conservation
-- Coordinate with Navigator for threat assessment
-- Provide detailed tactical analysis considering resource constraints
-
-BE EXTREMELY VERBOSE AND DETAILED in your combat analysis. Explain:
-- Current cannonball count and ammunition status
-- What targets you can see and their threat levels
-- Whether ammunition expenditure is justified for each target
-- Your targeting priorities and resource management reasoning
-- Whether to engage or conserve ammunition and why
-- Combat recommendations for the Captain
-
-Think like a seasoned naval combat expert with limited ammunition. Every shot counts!''',
-            'captain': '''You are the Captain of a pirate ship. You make the final decisions on movement, strategy, and crew coordination.
-
-IMPORTANT GAME MECHANICS:
-- Ship can move up to 3 tiles per turn in cardinal directions (North/South/East/West)
-- Movement through land barriers is IMPOSSIBLE - such moves will fail
-- Each treasure collected rewards 2 cannonballs
-- Ship starts with 25 cannonballs, cannons cost 1 cannonball per shot
-- Failed moves will explain why they're illegal (e.g., "Path blocked by land at (x,y)")
-
-Your responsibilities:
-- Analyze comprehensive reports from Navigator and Cannoneer
-- Make strategic movement decisions using the new 3-tile movement range
-- Coordinate the crew's actions and overall mission strategy
-- Balance risk vs reward, considering cannonball economy
-- Prioritize crew survival while pursuing the treasure hunting mission
-
-BE EXTREMELY VERBOSE AND DETAILED in your command decisions. Provide:
-- Analysis of all available intelligence from your crew
-- Evaluation of multi-tile movement options and their risks/benefits  
-- Strategic reasoning behind your chosen course of action
-- Risk assessment and contingency thinking
-- Clear movement commands with full justification
-
-Consider these priorities in order:
-1. Crew survival (avoid unnecessary damage)
-2. Treasure acquisition (move toward valuable targets using extended range)
-3. Tactical positioning (maintain strategic advantage)
-4. Resource management (conserve cannonballs when possible)
-5. Threat elimination (when safe and beneficial)
-
-Think like an experienced pirate captain - bold but calculated, treasure-focused but not reckless.'''
-        }
+        self.system_prompts = system_prompts or SYSTEM_PROMPTS
         
         # Initialize the appropriate language model
         if use_openai:
@@ -218,7 +148,7 @@ Think like an experienced pirate captain - bold but calculated, treasure-focused
         
         @tool
         def fire_cannon(target_x: int, target_y: int) -> Dict[str, Any]:
-            """Fire cannon at specified coordinates. Costs 1 cannonball. Range: 2 tiles."""
+            """Fire cannon at specified coordinates. Costs 1 cannonball. Range: 5 tiles."""
             return self.game_tools.cannoneer.fire_cannon(target_x, target_y)
         
         @tool
@@ -325,7 +255,8 @@ Think like an experienced pirate captain - bold but calculated, treasure-focused
             
             print(f"⚔️  CANNONEER: {len(targets)} hostile targets within cannon range")
             for i, target in enumerate(targets):
-                print(f"⚔️  CANNONEER: Target {i+1}: {target['type']} at {target['position']} - {target['threat_level']} threat level")
+                hit_chance = target.get('hit_chance', 0.25)
+                print(f"⚔️  CANNONEER: Target {i+1}: {target['type']} at {target['position']} - {target['threat_level']} threat level - Distance: {target['distance']} tiles - Hit chance: {hit_chance:.0%}")
             
             combat_context = f"""
             COMBAT SITUATION ANALYSIS:
@@ -333,7 +264,7 @@ Think like an experienced pirate captain - bold but calculated, treasure-focused
             Navigator Intelligence: {navigator_report}
             
             TACTICAL CONSIDERATIONS:
-            - Cannon range: 2 tiles (Manhattan distance)
+            - Cannon range: 5 tiles (Manhattan distance) with probabilistic hit system
             - Monster threat level: High (more dangerous)
             - Enemy threat level: Medium  
             - Each shot should be carefully considered

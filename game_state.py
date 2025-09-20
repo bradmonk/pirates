@@ -228,6 +228,11 @@ class GameState:
         self.ship_position = target_position
         self.turn_count += 1
         
+        # Check for any enemies occupying the same tile as the ship after movement
+        collision_detected = self.check_and_handle_position_overlaps()
+        if collision_detected:
+            success_message += f" | COLLISION DETECTED: {collision_detected}"
+        
         # Check victory condition
         if self.treasures_collected >= self.total_treasures:
             self.victory = True
@@ -419,19 +424,35 @@ class GameState:
                     if (self.game_map.is_valid_position(new_pos) and 
                         self.game_map.get_cell(new_pos) == CellType.WATER.value):
                         
-                        # Move the entity
-                        self.game_map.set_cell(current_pos, CellType.WATER.value)
-                        self.game_map.set_cell(new_pos, entity_type)
-                        
-                        movements.append({
-                            'entity_type': 'Enemy' if entity_type == CellType.ENEMY.value else 'Monster',
-                            'from': (current_pos.x, current_pos.y),
-                            'to': (new_pos.x, new_pos.y),
-                            'distance_to_ship': max(abs(self.ship_position.x - new_pos.x), 
-                                                  abs(self.ship_position.y - new_pos.y))
-                        })
-                        moved = True
-                        break
+                        # Check if this move would put enemy on same tile as ship
+                        if new_pos.x == self.ship_position.x and new_pos.y == self.ship_position.y:
+                            # Enemy is trying to move into ship's tile - trigger collision
+                            entity_type_name = 'Enemy' if entity_type == CellType.ENEMY.value else 'Monster'
+                            collision_msg = self.resolve_collision(current_pos, entity_type_name)
+                            movements.append({
+                                'entity_type': entity_type_name,
+                                'from': (current_pos.x, current_pos.y),
+                                'to': (new_pos.x, new_pos.y),
+                                'collision': True,
+                                'message': collision_msg,
+                                'distance_to_ship': 0
+                            })
+                            moved = True
+                            break
+                        else:
+                            # Normal movement - no collision
+                            self.game_map.set_cell(current_pos, CellType.WATER.value)
+                            self.game_map.set_cell(new_pos, entity_type)
+                            
+                            movements.append({
+                                'entity_type': 'Enemy' if entity_type == CellType.ENEMY.value else 'Monster',
+                                'from': (current_pos.x, current_pos.y),
+                                'to': (new_pos.x, new_pos.y),
+                                'distance_to_ship': max(abs(self.ship_position.x - new_pos.x), 
+                                                      abs(self.ship_position.y - new_pos.y))
+                            })
+                            moved = True
+                            break
                 
                 if not moved:
                     # Entity couldn't move (blocked by land or other entities)
@@ -442,6 +463,11 @@ class GameState:
                         'blocked': True,
                         'distance_to_ship': distance
                     })
+        
+        # After all enemy movements, check for any remaining position overlaps
+        collision_check = self.check_and_handle_position_overlaps()
+        if collision_check:
+            print(f"🚨 POST-MOVEMENT COLLISION CHECK: {collision_check}")
         
         return movements
     
@@ -467,6 +493,44 @@ class GameState:
                         })
         
         return pursuing_entities
+    
+    def check_collision_with_ship(self, position: Position) -> bool:
+        """Check if a given position would result in collision with the ship"""
+        return (position.x == self.ship_position.x and 
+                position.y == self.ship_position.y)
+    
+    def resolve_collision(self, collision_position: Position, entity_type: str) -> str:
+        """Handle collision between ship and enemy/monster at given position"""
+        old_lives = self.lives
+        self.take_damage()
+        damage_taken = old_lives - self.lives
+        
+        # Remove the enemy/monster from the map after collision
+        self.game_map.set_cell(collision_position, CellType.WATER.value)
+        
+        collision_message = f"💥 COLLISION! {entity_type} at ({collision_position.x},{collision_position.y}) collided with ship! Lost {damage_taken} life."
+        print(collision_message)
+        return collision_message
+    
+    def check_and_handle_position_overlaps(self) -> str:
+        """Check if any enemies/monsters occupy the same tile as the ship and handle collisions"""
+        collision_messages = []
+        
+        # Check all positions on the map for enemies/monsters that overlap with ship position
+        for y in range(self.game_map.height):
+            for x in range(self.game_map.width):
+                pos = Position(x, y)
+                cell_content = self.game_map.get_cell(pos)
+                
+                # If there's an enemy or monster at the ship's position, handle collision
+                if (pos.x == self.ship_position.x and pos.y == self.ship_position.y and
+                    cell_content in [CellType.ENEMY.value, CellType.MONSTER.value]):
+                    
+                    entity_type = "Enemy" if cell_content == CellType.ENEMY.value else "Monster"
+                    collision_msg = self.resolve_collision(pos, entity_type)
+                    collision_messages.append(collision_msg)
+        
+        return " | ".join(collision_messages) if collision_messages else ""
 
     def get_status(self) -> Dict:
         """Get current game status"""

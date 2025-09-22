@@ -135,7 +135,12 @@ class PirateGameAgents:
 
         # Initialize transcript logging
         self.transcript_log = []
-        self.log_file_path = f"game_transcript_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+
+        # Ensure transcripts directory exists
+        os.makedirs("transcripts", exist_ok=True)
+        self.log_file_path = (
+            f"transcripts/game_transcript_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+        )
         self.turn_counter = 0
 
         # Initialize decision history tracking

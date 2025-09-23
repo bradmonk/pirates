@@ -22,6 +22,8 @@ class PirateGameWebGUI:
         self.selected_model = None
         self.game_started = False
         self.game_stop_requested = False
+        self.step_mode = False  # Track if we're in step mode
+        self.step_ready = False  # Track if a step is ready to execute
         self.agent_reports = {}
         self.tool_outputs = {}
         self.system_prompts = SYSTEM_PROMPTS.copy()
@@ -128,8 +130,38 @@ class PirateGameWebGUI:
                         # Store the selected model
                         self.game_gui.selected_model = data.get("model")
                         self.game_gui.game_started = True
+                        self.game_gui.step_mode = False  # Regular continuous mode
 
                         response = {"status": "success", "message": "Game started"}
+                        self.wfile.write(json.dumps(response).encode())
+                    elif self.path == "/init_step_game":
+                        content_length = int(self.headers["Content-Length"])
+                        post_data = self.rfile.read(content_length)
+                        data = json.loads(post_data.decode("utf-8"))
+
+                        self.send_response(200)
+                        self.send_header("Content-type", "application/json")
+                        self.send_header("Access-Control-Allow-Origin", "*")
+                        self.end_headers()
+
+                        # Store the selected model and enable step mode
+                        self.game_gui.selected_model = data.get("model")
+                        self.game_gui.game_started = True
+                        self.game_gui.step_mode = True
+                        self.game_gui.step_ready = True
+
+                        response = {"status": "success", "message": "Step game initialized"}
+                        self.wfile.write(json.dumps(response).encode())
+                    elif self.path == "/step_game":
+                        self.send_response(200)
+                        self.send_header("Content-type", "application/json")
+                        self.send_header("Access-Control-Allow-Origin", "*")
+                        self.end_headers()
+
+                        # Signal that a step should be executed
+                        self.game_gui.step_ready = True
+
+                        response = {"status": "success", "message": "Step executed"}
                         self.wfile.write(json.dumps(response).encode())
                     elif self.path == "/stop_game":
                         self.send_response(200)

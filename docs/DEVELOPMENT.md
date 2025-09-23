@@ -8,6 +8,17 @@
 
 ## Recent Major Updates
 
+### 2024-12-23 - Step-by-Step Debugging Mode ✅
+- ✅ **Educational Step Mode**: Added step-by-step execution allowing users to manually progress through Navigator → Cannoneer → Captain sequences
+- ✅ **New Step Button UI**: Implemented half-width Step button alongside Start button with orange styling and proper Material Icons
+- ✅ **Backend API Support**: Added `/init_step_game` and `/step_game` endpoints in web_gui.py for controlled execution
+- ✅ **LangGraph-Compliant Implementation**: Refactored step mode to use proper LangGraph streaming instead of bypassing the graph architecture
+- ✅ **Agent Step Methods**: Enhanced PirateGameAgents with `init_step_turn()` and `run_step()` methods using graph.stream() for proper execution
+- ✅ **Dual Mode Architecture**: Refactored main game loop to support both continuous and step modes seamlessly
+- ✅ **Better Learning Experience**: Step mode allows users to understand each agent's decision-making process individually
+- ✅ **State Management**: Proper step state tracking with LangGraph stream iterator and completion detection
+- ✅ **Architecture Compliance**: Updated COPILOT_INSTRUCTIONS.md to enforce LangGraph conventions in future development
+
 ### 2024-12-23 - Turn Counter Synchronization Fix ✅
 - ✅ **Unified Turn Counting**: Fixed dual turn counter issue where game loop counter and game state counter were out of sync
 - ✅ **Accurate Game End Detection**: Moved turn counting from move_ship() method to main game loop for proper synchronization

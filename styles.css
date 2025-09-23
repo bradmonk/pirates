@@ -139,6 +139,18 @@ body {
     background-color: #c0392b;
 }
 
+.control-button.half-width {
+    flex: 0 0 calc(50% - 4px);
+}
+
+.control-button.step {
+    background-color: #f39c12;
+}
+
+.control-button.step:hover {
+    background-color: #e67e22;
+}
+
 .system-prompts-panel {
     display: flex;
     flex-direction: column;

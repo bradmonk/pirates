@@ -40,6 +40,15 @@
 - **Only stage files (git add) when the user specifically requests it**
 - **Do not run git commit or git push without explicit user instruction**
 
+### LangGraph Architecture Requirements
+- **ALWAYS follow LangGraph conventions** when working with agent workflows
+- Use proper StateGraph, nodes, and edges structure
+- Respect the compiled graph architecture - don't bypass it with direct method calls
+- For step-by-step execution, use LangGraph's streaming or checkpoint features
+- Maintain state consistency through the graph's state management
+- When debugging agents, work within the LangGraph framework patterns
+- Avoid creating parallel execution paths that bypass the graph structure
+
 ### Key Commands
 - `./restart.sh` - Start/restart the game (primary command)
 - `http://localhost:8000` - Access the web interface

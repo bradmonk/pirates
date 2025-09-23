@@ -805,6 +805,10 @@ class PirateGameAgents:
 
         self.graph = workflow.compile()
 
+        # Step mode tracking (LangGraph-based)
+        self.step_state = None  # Track current state for step mode
+        self.step_iterator = None  # LangGraph stream iterator
+
     def run_turn(self) -> GameAgentState:
         """Run one turn of the game with all agents"""
         # Check if stop was requested before starting the turn
@@ -832,6 +836,85 @@ class PirateGameAgents:
         final_state = self.graph.invoke(initial_state)
 
         return final_state
+
+    def init_step_turn(self) -> None:
+        """Initialize a new turn for step-by-step execution using LangGraph conventions"""
+        # Initialize the initial state
+        self.step_state = GameAgentState(
+            messages=[],
+            game_status=self.game_tools.get_game_status(),
+            last_action=None,
+            agent_reports={},
+            decision=None,
+        )
+
+        # Initialize the graph stream for step execution
+        self.step_stream = None
+        self.step_iterator = None
+
+        print("🔧 Step mode initialized - ready for first step")
+
+    def run_step(self) -> dict:
+        """Run one step of the agent workflow using LangGraph streaming"""
+        # Check if stop was requested
+        if self.web_gui and self.web_gui.game_stop_requested:
+            print("🛑 STOP REQUESTED: Aborting step...")
+            return {
+                "status": "stopped",
+                "message": "Game stopped by user request",
+                "final_state": None,
+            }
+
+        # If we haven't initialized a turn, do it now
+        if self.step_state is None:
+            self.init_step_turn()
+
+        try:
+            # If we haven't started streaming yet, initialize it
+            if self.step_iterator is None:
+                print("🚀 Initializing LangGraph stream for step execution")
+                self.step_iterator = iter(self.graph.stream(self.step_state))
+
+            # Get the next step from the stream
+            try:
+                step_output = next(self.step_iterator)
+                node_name = list(step_output.keys())[0]
+                node_state = step_output[node_name]
+
+                print(f"🎯 Executed step: {node_name.upper()}")
+
+                # Update our step state
+                self.step_state = node_state
+
+                return {
+                    "status": "step_complete",
+                    "message": f"{node_name.capitalize()} step completed",
+                    "node": node_name,
+                    "final_state": None,
+                }
+
+            except StopIteration:
+                # Stream completed - turn is done
+                print("✅ All agents have completed their tasks")
+                final_state = self.step_state
+
+                # Reset for next turn
+                self.step_state = None
+                self.step_iterator = None
+
+                return {
+                    "status": "complete",
+                    "message": "Turn completed",
+                    "final_state": final_state,
+                }
+
+        except Exception as e:
+            print(f"❌ Error in LangGraph step execution: {e}")
+            return {
+                "status": "error",
+                "message": f"Error in step execution: {str(e)}",
+                "final_state": None,
+            }
 
 
 def test_agents():

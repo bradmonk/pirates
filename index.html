@@ -25,8 +25,10 @@
                     <option value="">Loading models...</option>
                 </select>
                 <div class="control-buttons">
-                    <button id="startButton" class="control-button start" disabled><span
+                    <button id="startButton" class="control-button start half-width" disabled><span
                             class="material-symbols-outlined">play_arrow</span> Start</button>
+                    <button id="stepButton" class="control-button step half-width" disabled><span
+                            class="material-symbols-outlined">skip_next</span> Step</button>
                     <button id="stopButton" class="control-button stop"><span
                             class="material-symbols-outlined">stop</span> Stop</button>
                 </div>
@@ -174,15 +176,21 @@
 
             initializeControls() {
                 const startButton = document.getElementById('startButton');
+                const stepButton = document.getElementById('stepButton');
                 const modelSelect = document.getElementById('modelSelect');
 
                 modelSelect.addEventListener('change', (e) => {
                     this.selectedModel = e.target.value;
                     startButton.disabled = !this.selectedModel;
+                    stepButton.disabled = !this.selectedModel;
                 });
 
                 startButton.addEventListener('click', () => {
                     this.startGame();
+                });
+
+                stepButton.addEventListener('click', () => {
+                    this.stepGame();
                 });
 
                 const stopButton = document.getElementById('stopButton');
@@ -389,6 +397,67 @@
                 } finally {
                     stopButton.disabled = false;
                     stopButton.textContent = 'Stop Game';
+                }
+            }
+
+            async stepGame() {
+                if (!this.selectedModel) return;
+
+                const stepButton = document.getElementById('stepButton');
+                const statusDiv = document.getElementById('gameStatus');
+                const statusText = document.getElementById('statusText');
+
+                stepButton.disabled = true;
+                const originalText = stepButton.textContent;
+                stepButton.textContent = 'Stepping...';
+                statusDiv.style.display = 'block';
+
+                try {
+                    // If this is the first step, initialize the game
+                    if (!this.gameRunning) {
+                        const response = await fetch('/init_step_game', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                model: this.selectedModel
+                            })
+                        });
+
+                        if (!response.ok) {
+                            throw new Error('Failed to initialize step game');
+                        }
+
+                        this.gameRunning = true;
+                        const startButton = document.getElementById('startButton');
+                        startButton.style.display = 'none';
+
+                        const stopButton = document.getElementById('stopButton');
+                        stopButton.style.display = 'inline-block';
+                    }
+
+                    // Execute one step
+                    const response = await fetch('/step_game', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        }
+                    });
+
+                    if (response.ok) {
+                        statusText.textContent = 'Step completed - Click Step to continue';
+                        // Fetch updated game state and update display
+                        await this.loadGameState();
+                    } else {
+                        throw new Error('Failed to execute step');
+                    }
+                } catch (error) {
+                    statusText.textContent = 'Error executing step';
+                    console.error('Error stepping game:', error);
+                } finally {
+                    stepButton.disabled = false;
+                    stepButton.textContent = originalText;
                 }
             }
 

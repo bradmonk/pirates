@@ -8,6 +8,41 @@
 
 ## Recent Major Updates
 
+### 2024-12-23 - Turn Counter Synchronization Fix ✅
+- ✅ **Unified Turn Counting**: Fixed dual turn counter issue where game loop counter and game state counter were out of sync
+- ✅ **Accurate Game End Detection**: Moved turn counting from move_ship() method to main game loop for proper synchronization
+- ✅ **Improved End Game Logic**: Enhanced end-game summary to use actual turn count and proper exit reason detection
+- ✅ **Eliminated Turn Mismatch**: Resolved confusion where "TIME LIMIT" was incorrectly reported due to counter desynchronization
+- ✅ **Better Game Flow Tracking**: Main game loop now maintains authoritative turn count synchronized with game state
+
+### 2024-12-23 - Realistic Line-of-Sight Scanning ✅
+- ✅ **Line-of-Sight Implementation**: Navigator can no longer see through land masses - only items with clear sight lines are detected
+- ✅ **Bresenham-like Algorithm**: Added `has_line_of_sight()` method using stepping algorithm to check for land obstacles
+- ✅ **Realistic Reconnaissance**: Treasures, enemies, and monsters behind land formations are now hidden from scanner
+- ✅ **Enhanced Tactical Realism**: Players must navigate around land masses to reveal hidden areas and items
+- ✅ **Strategic Exploration**: Encourages more realistic scouting and positioning strategies
+
+### 2024-12-23 - Simplified Captain Interface & Navigator Recommendations ✅
+- ✅ **Simplified Movement Options**: Removed redundant AVAILABLE MOVES section from Captain's briefing to reduce information overload
+- ✅ **Cleaner Blocked Moves**: Simplified blocked move format from "@1N (1 miles North): Blocked - Path blocked by L at (9, 12)" to "1 miles North is blocked"
+- ✅ **Navigator Directive**: Updated Navigator system prompt to provide single movement recommendation in @XY format (e.g., @2N, @3W)
+- ✅ **Reduced Captain Confusion**: Streamlined strategic context to focus on essential information and clear recommendations
+- ✅ **Enhanced Decision Flow**: Navigator now ends reports with specific directional guidance for Captain to follow
+
+### 2024-12-23 - Enhanced Directional Reporting & Navigator Clarity ✅
+- ✅ **Cleaner Direction Format**: Simplified Navigator reporting to show only directional components without redundant total distance
+- ✅ **Natural Language Enhancement**: Improved readability with "2 miles north and 1 mile east (2N + 1E)" format instead of confusing "total miles" display
+- ✅ **Navigator Intelligence**: Eliminated confusion between Manhattan distance totals and actual positional components
+- ✅ **Consistent Formatting**: Standardized location reporting across treasures, enemies, and monsters for better AI comprehension
+- ✅ **Code Optimization**: Streamlined format_location_details() function to produce clearer, more actionable intelligence reports
+
+### 2024-12-23 - Directional Reporting Fix & Scan Radius Revert ✅
+- ✅ **Directional Component Display**: Fixed direction reporting to show actual displacement components (e.g., "5N + 5E") instead of primary direction only
+- ✅ **Scan Radius Revert**: Reverted scan radius back to original square area behavior (radius 5 = 11x11 square) instead of Manhattan distance constraint
+- ✅ **Distance Accuracy**: Maintained Manhattan distance calculation for movement and combat while using proper directional components for navigation
+- ✅ **UI Format Update**: Updated agent formatting to display "X miles total (YN + ZE)" format for clearer positional intelligence
+- ✅ **Code Optimization**: Simplified `get_surrounding_cells()` method in `game_state.py` and enhanced `get_direction()` in `game_tools.py`
+
 ### 2024-12-19 - Navigator-Cannoneer Tactical Coordination & UI Enhancements ✅
 - ✅ **Navigator Scan Range Update**: Increased navigator scan range from 3 to 5 tiles to match cannon range for better tactical coordination
 - ✅ **Enemy Tracking Status**: Added "Enemies Sunk: {x/N}" status indicator to web UI near treasures counter

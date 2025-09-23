@@ -162,11 +162,17 @@ class PirateGame:
                 self.agents.update_system_prompts(self.gui.system_prompts)
 
             turn_count += 1
+            self.game_state.turn_count = turn_count  # Keep game state turn counter in sync
             print(f"\\n{'='*30} TURN {turn_count} BEGINS {'='*30}")
             print(
                 f"📍 Current Status: Position {self.game_state.ship_position.x},{self.game_state.ship_position.y} | Lives: {self.game_state.lives} | Treasures: {self.game_state.treasures_collected}/{self.game_state.total_treasures}"
             )
             print("=" * 80)
+
+            # Draw cards for this turn
+            if self.agents:
+                cards = self.agents.draw_cards(turn_count)  # Pass current turn number
+                print("=" * 80)
 
             # Check for any pre-existing position overlaps at start of turn
             pre_turn_collision = self.game_state.check_and_handle_position_overlaps()
@@ -228,7 +234,7 @@ class PirateGame:
                                 f"⚔️ {movement['entity_type']} moved from {movement['from']} → {movement['to']} (distance to ship: {movement['distance_to_ship']} tiles)"
                             )
                 else:
-                    print("🏝️ No enemies within 3 tiles of ship - all quiet")
+                    print("🏝️ No enemies within 5 tiles of ship - all quiet")
                 print("-" * 60)
 
                 # Show updated game state
@@ -286,7 +292,7 @@ class PirateGame:
         elif turn_count >= max_turns:
             print(f"\\n⏰ Game ended after {max_turns} turns (maximum reached)")
 
-        self._end_game_summary()
+        self._end_game_summary(turn_count, max_turns)
 
     def _summarize_report(self, report: str) -> str:
         """Extract key information from agent report"""
@@ -321,24 +327,29 @@ class PirateGame:
             f"   Treasures collected: {self.game_state.treasures_collected}/{self.game_state.total_treasures}"
         )
 
-    def _end_game_summary(self):
+    def _end_game_summary(self, actual_turns: int, max_turns: int):
         """Display end game summary"""
         print("\\n" + "=" * 60)
         print("🏴‍☠️ GAME SUMMARY 🏴‍☠️")
         print("=" * 60)
         status = self.game_state.get_status()
         print(f"Model used: {self.model_name}")
-        print(f"Total turns: {status['turn_count']}")
+        print(f"Total turns: {actual_turns}")
         print(f"Treasures collected: {status['treasures_collected']}/{status['total_treasures']}")
         print(f"Final lives: {status['lives']}")
         print(f"Final position: {status['ship_position']}")
 
+        # Determine end reason based on actual game flow, not just status
         if status["victory"]:
             print("Result: 🏆 VICTORY!")
         elif status["lives"] <= 0:
             print("Result: 💀 DEFEAT")
-        else:
+        elif actual_turns >= max_turns:
             print("Result: ⏰ TIME LIMIT")
+        elif self.use_gui and self.gui and self.gui.game_stop_requested:
+            print("Result: 🛑 USER STOPPED")
+        else:
+            print("Result: ❓ UNKNOWN (Game ended unexpectedly)")
 
         print("\\nThank you for playing the AI Pirate Game!")
 

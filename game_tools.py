@@ -25,19 +25,37 @@ class NavigatorTool:
         safe_water = []
 
         def get_direction(from_pos, to_pos):
-            """Convert coordinate difference to cardinal direction"""
+            """Convert coordinate difference to directional components"""
             dx = to_pos.x - from_pos.x
             dy = to_pos.y - from_pos.y
 
-            # Determine primary direction
-            if abs(dx) > abs(dy):
-                return "East" if dx > 0 else "West"
+            # Build direction string showing both components if present
+            direction_parts = []
+
+            if dy < 0:  # North
+                direction_parts.append(f"{abs(dy)}N")
+            elif dy > 0:  # South
+                direction_parts.append(f"{dy}S")
+
+            if dx > 0:  # East
+                direction_parts.append(f"{dx}E")
+            elif dx < 0:  # West
+                direction_parts.append(f"{abs(dx)}W")
+
+            if len(direction_parts) == 2:
+                return " + ".join(direction_parts)
+            elif len(direction_parts) == 1:
+                return direction_parts[0]
             else:
-                return "South" if dy > 0 else "North"
+                return "same position"
 
         for pos, cell in surrounding_cells.items():
             # Skip the ship's current position
             if pos == ship_pos:
+                continue
+
+            # Check line of sight - skip items blocked by land
+            if not self.game_state.game_map.has_line_of_sight(ship_pos, pos):
                 continue
 
             distance = abs(pos.x - ship_pos.x) + abs(pos.y - ship_pos.y)

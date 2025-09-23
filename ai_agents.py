@@ -20,6 +20,7 @@ import os
 from game_tools import GameTools
 from game_state import GameState
 from system_prompts import SYSTEM_PROMPTS
+from card_prompts import GAME_CARDS, get_random_card, get_cards_for_agent
 
 
 class GameAgentState(TypedDict):
@@ -147,6 +148,10 @@ class PirateGameAgents:
         self.decision_history = []
         self.last_turn_summary = None
 
+        # Initialize card system
+        self.current_cards = []
+        self.cards_drawn_this_turn = []
+
         # Create the agent graph
         self.setup_agent_graph()
 
@@ -165,11 +170,24 @@ class PirateGameAgents:
         """Log agent interaction to transcript"""
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+        # Get cards that affected this agent
+        agent_cards = get_cards_for_agent(agent_name, self.current_cards)
+
         log_entry = f"""
             {'='*80}
             TURN {self.turn_counter} - {agent_name.upper()} AGENT
             Time: {timestamp}
-            {'='*80}
+            {'='*80}"""
+
+        # Add card information if any apply
+        if agent_cards:
+            log_entry += f"""
+
+            🃏 ACTIVE CARDS AFFECTING THIS AGENT:
+            {chr(10).join(f'   • {card}' for card in agent_cards)}
+            """
+
+        log_entry += f"""
 
             CONTEXT PROVIDED TO AGENT:
             {context}
@@ -373,6 +391,43 @@ class PirateGameAgents:
             get_game_status,
         ]
 
+    def draw_cards(self, current_turn: int) -> List[Tuple[str, str]]:
+        """Draw random cards based on turn rules: 1 card every 4 turns starting on turn 4, active for 1 turn only"""
+
+        # Clear previous turn's cards first
+        self.current_cards = []
+        self.cards_drawn_this_turn = []
+
+        # Only draw a card on turns 4, 8, 12, 16, etc.
+        if current_turn >= 4 and (current_turn % 4) == 0:
+            card = get_random_card()
+            self.cards_drawn_this_turn.append(card)
+            self.current_cards = self.cards_drawn_this_turn.copy()
+            print(f"🃏 CARD DRAWN ON TURN {current_turn}: [{card[0].upper()}] {card[1]}")
+        else:
+            print(f"🃏 No card active on turn {current_turn}")
+
+        # Update web GUI with current cards
+        if self.web_gui:
+            self.web_gui.current_cards = self.current_cards
+
+        return self.current_cards
+
+    def get_agent_system_prompt(self, agent_name: str) -> str:
+        """Get system prompt for an agent with any applicable card prompts appended"""
+        base_prompt = SYSTEM_PROMPTS[agent_name]
+
+        # Get card prompts that apply to this agent
+        card_prompts = get_cards_for_agent(agent_name, self.current_cards)
+
+        if card_prompts:
+            card_section = "\n\n🃏 SPECIAL CIRCUMSTANCES FOR THIS TURN:\n"
+            for i, prompt in enumerate(card_prompts, 1):
+                card_section += f"{i}. {prompt}\n"
+            base_prompt += card_section
+
+        return base_prompt
+
     def setup_agent_graph(self):
         """Setup the LangGraph agent workflow"""
 
@@ -381,7 +436,7 @@ class PirateGameAgents:
 
         def navigator_agent(state: GameAgentState) -> GameAgentState:
             """Navigator agent - scans environment and reports findings"""
-            system_message = SystemMessage(content=self.system_prompts["navigator"])
+            system_message = SystemMessage(content=self.get_agent_system_prompt("navigator"))
 
             print("\\n🧭 NAVIGATOR: Beginning environmental scan...")
 
@@ -403,6 +458,31 @@ class PirateGameAgents:
                 self.web_gui.tool_outputs["scan"] = scan_summary
 
             # Create detailed context for the AI
+            def format_location_details(items, item_type):
+                """Format location details for treasures, enemies, or monsters"""
+                if not items:
+                    return f"{item_type} location(s): None detected"
+
+                location_list = f"{item_type} location(s):"
+                for item in items:
+                    direction = item["direction"]
+
+                    # Display just the directional components
+                    if " + " in direction:
+                        # Multiple components like "2N + 1E"
+                        location_list += f"\n    - {direction.replace(' + ', ' and ').replace('N', ' miles north').replace('S', ' miles south').replace('E', ' miles east').replace('W', ' miles west')} ({direction})"
+                    else:
+                        # Single component like "5W"
+                        direction_text = (
+                            direction.replace("N", " miles north")
+                            .replace("S", " miles south")
+                            .replace("E", " miles east")
+                            .replace("W", " miles west")
+                        )
+                        location_list += f"\n    - {direction_text} ({direction})"
+
+                return location_list
+
             context = f"""
             CURRENT SITUATION ANALYSIS:
             Lives Remaining: {status['lives']}/3
@@ -417,20 +497,23 @@ class PirateGameAgents:
             - Monsters in area: {len(scan_result['monsters_nearby'])}
             - Immediate threats (within 1 mile): {len(scan_result['immediate_threats'])}
             - Reachable treasures (within 3 miles): {len(scan_result['reachable_treasures'])}
+
+            {format_location_details(scan_result['treasures_nearby'], 'Treasure')}
+
+            {format_location_details(scan_result['enemies_nearby'], 'Enemy')}
+
+            {format_location_details(scan_result['monsters_nearby'], 'Monster')}
             
             DETAILED FINDINGS:
-            Use your navigation tools to scan for specific directional information about treasures and threats.
-            Report findings in terms of distances and cardinal directions (N/S/E/W).
+            Based on the SCAN RESULTS, prepare tactical recommendations about where to find treasures and threats.
+            Report these findings to the captain and conclude with a SINGLE MOVEMENT RECOMMENDATION in the format @XY where X is the distance (1-3) and Y is the direction (N/S/E/W).
+            For example: "I recommend we proceed @2N to reach the nearest treasure while avoiding threats."
             """
 
             messages = (
                 [system_message]
                 + state["messages"]
-                + [
-                    HumanMessage(
-                        content=f"Navigator, provide a comprehensive analysis of our current situation and surroundings: {context}"
-                    )
-                ]
+                + [HumanMessage(content=f"Here is the current situation: {context}")]
             )
 
             # Check if stop was requested before making AI call
@@ -457,7 +540,7 @@ class PirateGameAgents:
 
         def cannoneer_agent(state: GameAgentState) -> GameAgentState:
             """Cannoneer agent - handles combat and targeting"""
-            system_message = SystemMessage(content=self.system_prompts["cannoneer"])
+            system_message = SystemMessage(content=self.get_agent_system_prompt("cannoneer"))
 
             print("\\n⚔️  CANNONEER: Assessing combat situation...")
 
@@ -542,7 +625,7 @@ class PirateGameAgents:
 
         def captain_agent(state: GameAgentState) -> GameAgentState:
             """Captain agent - makes movement decisions and overall strategy"""
-            system_message = SystemMessage(content=self.system_prompts["captain"])
+            system_message = SystemMessage(content=self.get_agent_system_prompt("captain"))
 
             print("CAPTAIN: Receiving crew reports and formulating strategy...")
 
@@ -582,11 +665,8 @@ class PirateGameAgents:
             Cannoneer Report: {cannoneer_report}
             
             MOVEMENT OPTIONS ANALYSIS:
-            AVAILABLE MOVES:
-            {chr(10).join([f"- {move['direction_name']}: {move['risk_assessment']}" for move in possible_moves if move['can_move']])}
-            
             BLOCKED MOVES:
-            {chr(10).join([f"- {move['direction_name']}: {move['risk_assessment']} - {move.get('blocked_reason', 'Path blocked')}" for move in possible_moves if not move['can_move']])}
+            {chr(10).join([f"- {move['direction_name'].split('(')[0].strip()} is blocked" for move in possible_moves if not move['can_move']])}
             
             STRATEGIC OBJECTIVES:
             - Primary: Collect all {current_status['total_treasures']} treasures  
@@ -629,13 +709,14 @@ class PirateGameAgents:
 
             import re
 
-            # Look for the precise command format @[1-3][N/E/S/W]
+            # Look for ALL command formats @[1-3][N/E/S/W] in the captain's deliberation
             command_pattern = r"@([1-3])([NESW])"
-            match = re.search(command_pattern, response_text)
+            matches = re.findall(command_pattern, response_text)
 
-            if match:
-                distance = int(match.group(1))
-                direction_letter = match.group(2)
+            if matches:
+                # If multiple commands found, use the LAST one (most recent decision)
+                distance_str, direction_letter = matches[-1]
+                distance = int(distance_str)
 
                 # Map direction letters to unit vectors
                 direction_map = {
@@ -649,9 +730,19 @@ class PirateGameAgents:
                     unit_vector = direction_map[direction_letter]
                     chosen_direction = (unit_vector[0] * distance, unit_vector[1] * distance)
                     direction_names = {"N": "North", "S": "South", "E": "East", "W": "West"}
-                    print(
-                        f"👨‍✈️ CAPTAIN: Parsed command @{distance}{direction_letter} -> {distance} miles {direction_names[direction_letter]} -> {chosen_direction}"
-                    )
+
+                    if len(matches) > 1:
+                        print(
+                            f"👨‍✈️ CAPTAIN: Found {len(matches)} movement commands, using final decision: @{distance_str}{direction_letter}"
+                        )
+                    else:
+                        print(
+                            f"👨‍✈️ CAPTAIN: Parsed command @{distance_str}{direction_letter} -> {distance} miles {direction_names[direction_letter]} -> {chosen_direction}"
+                        )
+            else:
+                print(
+                    "👨‍✈️ CAPTAIN: No valid movement command found in deliberation - maintaining position!"
+                )
 
             # Execute the movement
             if chosen_direction:

@@ -270,6 +270,65 @@ body {
     padding: 12px;
 }
 
+/* Top info area layout */
+.top-info-area {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.half-width {
+    flex: 1;
+}
+
+/* Cards display styling */
+.cards-info {
+    background-color: var(--pse_card);
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.cards-info h3 {
+    margin: 0 0 10px 0;
+    color: var(--pse_text);
+    font-size: 16px;
+}
+
+#active-cards {
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.card-item {
+    background-color: rgba(255, 193, 7, 0.1);
+    border-left: 4px solid #ffc107;
+    padding: 8px 10px;
+    margin-bottom: 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    line-height: 1.3;
+}
+
+.card-target {
+    font-weight: bold;
+    color: var(--pse_neonblue);
+    text-transform: uppercase;
+    font-size: 10px;
+}
+
+.card-text {
+    color: var(--pse_text);
+    margin-top: 3px;
+}
+
+.no-cards {
+    color: var(--pse_text_secondary);
+    font-style: italic;
+    text-align: center;
+    padding: 20px;
+    font-size: 12px;
+}
+
 
 .map-grid {
     display: grid;
@@ -291,15 +350,40 @@ body {
     font-weight: bold;
 }
 
-.water { background-color: #2980b9; color: #fff; }
-.land { background-color: #8b4513; color: #fff; }
-.treasure { background-color: #f1c40f; color: #000; }
-.enemy { background-color: #e74c3c; color: #fff; }
-.monster { background-color: #8e44ad; color: #fff; }
-.ship { background-color: #00ff00; color: #000; animation: pulse 2s infinite; }
+.water {
+    background-color: #2980b9;
+    color: #fff;
+}
+
+.land {
+    background-color: #8b4513;
+    color: #fff;
+}
+
+.treasure {
+    background-color: #f1c40f;
+    color: #000;
+}
+
+.enemy {
+    background-color: #e74c3c;
+    color: #fff;
+}
+
+.monster {
+    background-color: #8e44ad;
+    color: #fff;
+}
+
+.ship {
+    background-color: #00ff00;
+    color: #000;
+    animation: pulse 2s infinite;
+}
 
 /* Pursuit indicator for enemies/monsters actively chasing the player */
-.enemy.pursuing, .monster.pursuing {
+.enemy.pursuing,
+.monster.pursuing {
     box-shadow: 0 0 15px 3px rgba(231, 76, 60, 0.8), 0 0 25px 5px rgba(231, 76, 60, 0.4);
     animation: pursuit-glow 1.5s ease-in-out infinite alternate;
     border: 2px solid rgba(255, 255, 255, 0.6);
@@ -316,16 +400,25 @@ body {
 }
 
 @keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.1); }
-    100% { transform: scale(1); }
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.1);
+    }
+
+    100% {
+        transform: scale(1);
+    }
 }
 
 @keyframes pursuit-glow {
-    0% { 
+    0% {
         box-shadow: 0 0 15px 3px rgba(231, 76, 60, 0.6), 0 0 25px 5px rgba(231, 76, 60, 0.3);
     }
-    100% { 
+
+    100% {
         box-shadow: 0 0 20px 5px rgba(231, 76, 60, 1), 0 0 35px 8px rgba(231, 76, 60, 0.6);
     }
 }
@@ -385,9 +478,17 @@ body {
     overflow-y: auto;
 }
 
-.navigator { border-left: 4px solid #45cd12; }
-.cannoneer { border-left: 4px solid #e74c3c; }
-.captain { border-left: 4px solid #45b2eb; }
+.navigator {
+    border-left: 4px solid #45cd12;
+}
+
+.cannoneer {
+    border-left: 4px solid #e74c3c;
+}
+
+.captain {
+    border-left: 4px solid #45b2eb;
+}
 
 h1 {
     text-align: center;

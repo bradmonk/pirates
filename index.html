@@ -1,16 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pirate Game - AI Agents</title>
     <!-- Google Material Icons -->
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+        rel="stylesheet">
     <link href='https://fonts.googleapis.com/css?family=ABeeZee|Muli|Almendra+SC|Almarai' rel='stylesheet'>
     <!-- External CSS -->
     <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
     <div class="container">
         <div class="system-prompts-panel">
@@ -21,52 +25,72 @@
                     <option value="">Loading models...</option>
                 </select>
                 <div class="control-buttons">
-                    <button id="startButton" class="control-button start" disabled><span class="material-symbols-outlined">play_arrow</span> Start</button>
-                    <button id="stopButton" class="control-button stop"><span class="material-symbols-outlined">stop</span> Stop</button>
+                    <button id="startButton" class="control-button start" disabled><span
+                            class="material-symbols-outlined">play_arrow</span> Start</button>
+                    <button id="stopButton" class="control-button stop"><span
+                            class="material-symbols-outlined">stop</span> Stop</button>
                 </div>
             </div>
-            
+
             <h3><span class="material-symbols-outlined">settings</span> System Prompts</h3>
-            
+
             <div class="prompt-editor">
                 <h4><span class="material-symbols-outlined">navigation</span> Navigator</h4>
-                <textarea id="navigatorPrompt" class="prompt-textarea" rows="6" placeholder="Loading navigator system prompt..."></textarea>
+                <textarea id="navigatorPrompt" class="prompt-textarea" rows="6"
+                    placeholder="Loading navigator system prompt..."></textarea>
             </div>
-            
+
             <div class="prompt-editor">
                 <h4><span class="material-symbols-outlined">gps_fixed</span> Cannoneer</h4>
-                <textarea id="cannoneerPrompt" class="prompt-textarea" rows="6" placeholder="Loading cannoneer system prompt..."></textarea>
+                <textarea id="cannoneerPrompt" class="prompt-textarea" rows="6"
+                    placeholder="Loading cannoneer system prompt..."></textarea>
             </div>
-            
+
             <div class="prompt-editor">
                 <h4><span class="material-symbols-outlined">person</span> Captain</h4>
-                <textarea id="captainPrompt" class="prompt-textarea" rows="6" placeholder="Loading captain system prompt..."></textarea>
+                <textarea id="captainPrompt" class="prompt-textarea" rows="6"
+                    placeholder="Loading captain system prompt..."></textarea>
             </div>
-            
+
             <button id="updatePrompts" class="update-prompts-button">
                 <span class="material-symbols-outlined">save</span> Update Prompts
             </button>
         </div>
-        
+
         <div class="game-area">
-            <!-- Move Ship Status above the map -->
-            <div class="status-info">
-                <h3>AI Pirates Status</h3>
-                <div id="ship-status">
-                    <p><strong>Lives:</strong> <span id="lives">Loading...</span> | <strong>Score:</strong> <span id="score">Loading...</span></p>
-                    <p><strong>Treasures:</strong> <span id="treasures">Loading...</span>/<span id="total_treasures">Loading...</span> | <strong>Turn:</strong> <span id="turn">Loading...</span></p>
-                    <p><strong>Pos:</strong> <span id="position">Loading...</span> | <strong>Ammo:</strong> <span id="cannonballs">Loading...</span></p>
+            <!-- Status and Cards area at top -->
+            <div class="top-info-area">
+                <!-- AI Pirates Status - left half -->
+                <div class="status-info half-width">
+                    <h3>AI Pirates Status</h3>
+                    <div id="ship-status">
+                        <p><strong>Lives:</strong> <span id="lives">Loading...</span> | <strong>Score:</strong> <span
+                                id="score">Loading...</span></p>
+                        <p><strong>Treasures:</strong> <span id="treasures">Loading...</span>/<span
+                                id="total_treasures">Loading...</span> | <strong>Turn:</strong> <span
+                                id="turn">Loading...</span></p>
+                        <p><strong>Pos:</strong> <span id="position">Loading...</span> | <strong>Ammo:</strong> <span
+                                id="cannonballs">Loading...</span></p>
+                    </div>
+                </div>
+
+                <!-- Cards display - right half -->
+                <div class="cards-info half-width">
+                    <h3>🃏 Active Cards</h3>
+                    <div id="active-cards">
+                        <div class="no-cards">No cards drawn yet</div>
+                    </div>
                 </div>
             </div>
-            
+
             <div id="gameStatus" class="game-status-compact" style="display: none;">
                 <span id="statusText">Ready</span>
             </div>
-            
+
             <div id="map-container" class="map-grid">
                 <!-- Map cells will be generated here -->
             </div>
-            
+
             <!-- Move legend below the map -->
             <div class="legend">
                 <h4><span class="material-symbols-outlined">map</span> Map Legend</h4>
@@ -98,36 +122,36 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="status-panel">
             <div class="agent-log navigator">
                 <h3><span class="material-symbols-outlined">navigation</span> Navigator LLM</h3>
                 <div id="navigator-log">Waiting for navigator response...</div>
             </div>
-            
+
             <div class="agent-log cannoneer">
                 <h3><span class="material-symbols-outlined">gps_fixed</span> Cannoneer LLM</h3>
                 <div id="cannoneer-log">Waiting for cannoneer response...</div>
             </div>
-            
+
             <div class="agent-log captain">
                 <h3><span class="material-symbols-outlined">person</span> Captain LLM</h3>
                 <div id="captain-log">Waiting for captain response...</div>
             </div>
-            
+
             <div class="tool-outputs">
                 <h3><span class="material-symbols-outlined">build</span> Tool Outputs</h3>
-                
+
                 <div class="tool-log move">
                     <h4><span class="material-symbols-outlined">directions</span> Move</h4>
                     <div id="move-log">No movement yet...</div>
                 </div>
-                
+
                 <div class="tool-log fire-cannon">
                     <h4><span class="material-symbols-outlined">local_fire_department</span> Fire Cannon</h4>
                     <div id="fire-cannon-log">No cannon fire yet...</div>
                 </div>
-                
+
                 <div class="tool-log scan">
                     <h4><span class="material-symbols-outlined">radar</span> Scan Area</h4>
                     <div id="scan-log">No scans yet...</div>
@@ -147,31 +171,31 @@
                 this.loadSystemPrompts();
                 this.loadInitialGameStatus();
             }
-            
+
             initializeControls() {
                 const startButton = document.getElementById('startButton');
                 const modelSelect = document.getElementById('modelSelect');
-                
+
                 modelSelect.addEventListener('change', (e) => {
                     this.selectedModel = e.target.value;
                     startButton.disabled = !this.selectedModel;
                 });
-                
+
                 startButton.addEventListener('click', () => {
                     this.startGame();
                 });
-                
+
                 const stopButton = document.getElementById('stopButton');
                 stopButton.addEventListener('click', () => {
                     this.stopGame();
                 });
-                
+
                 const updatePromptsButton = document.getElementById('updatePrompts');
                 updatePromptsButton.addEventListener('click', () => {
                     this.updateSystemPrompts();
                 });
             }
-            
+
             async loadAvailableModels() {
                 try {
                     const response = await fetch('/available_models.json');
@@ -184,11 +208,11 @@
                     this.updateModelDropdown(['llama3.1:latest', 'llama2:latest', 'codellama:latest']);
                 }
             }
-            
+
             updateModelDropdown(modelsData) {
                 const select = document.getElementById('modelSelect');
                 select.innerHTML = '<option value="">Select a model...</option>';
-                
+
                 // Handle both old format (array) and new format (grouped object)
                 if (Array.isArray(modelsData)) {
                     // Old format - just Ollama models
@@ -203,33 +227,33 @@
                     if (modelsData.ollama && modelsData.ollama.length > 0) {
                         const ollamaGroup = document.createElement('optgroup');
                         ollamaGroup.label = 'Ollama (Local)';
-                        
+
                         modelsData.ollama.forEach(model => {
                             const option = document.createElement('option');
                             option.value = model;
                             option.textContent = model;
                             ollamaGroup.appendChild(option);
                         });
-                        
+
                         select.appendChild(ollamaGroup);
                     }
-                    
+
                     if (modelsData.openai && modelsData.openai.length > 0) {
                         const openaiGroup = document.createElement('optgroup');
                         openaiGroup.label = 'OpenAI (Cloud)';
-                        
+
                         modelsData.openai.forEach(model => {
                             const option = document.createElement('option');
                             option.value = model;
                             option.textContent = model;
                             openaiGroup.appendChild(option);
                         });
-                        
+
                         select.appendChild(openaiGroup);
                     }
-                    
+
                     // If no models available, show message
-                    if ((!modelsData.ollama || modelsData.ollama.length === 0) && 
+                    if ((!modelsData.ollama || modelsData.ollama.length === 0) &&
                         (!modelsData.openai || modelsData.openai.length === 0)) {
                         const option = document.createElement('option');
                         option.value = '';
@@ -239,23 +263,23 @@
                     }
                 }
             }
-            
+
             async loadSystemPrompts() {
                 try {
                     const response = await fetch('/system_prompts.json');
                     if (response.ok) {
                         const prompts = await response.json();
-                        
+
                         // Populate the textareas with the centralized prompts
                         document.getElementById('navigatorPrompt').value = prompts.navigator || '';
                         document.getElementById('cannoneerPrompt').value = prompts.cannoneer || '';
                         document.getElementById('captainPrompt').value = prompts.captain || '';
-                        
+
                         // Update placeholders to indicate loaded
                         document.getElementById('navigatorPrompt').placeholder = 'Navigator system prompt loaded';
                         document.getElementById('cannoneerPrompt').placeholder = 'Cannoneer system prompt loaded';
                         document.getElementById('captainPrompt').placeholder = 'Captain system prompt loaded';
-                        
+
                         console.log('System prompts loaded successfully');
                     }
                 } catch (error) {
@@ -266,7 +290,7 @@
                     document.getElementById('captainPrompt').placeholder = 'Failed to load captain prompt';
                 }
             }
-            
+
             async loadInitialGameStatus() {
                 try {
                     const response = await fetch('/game_state.json');
@@ -274,6 +298,7 @@
                         const gameState = await response.json();
                         this.updateStatus(gameState.status);
                         this.updateMap(gameState.map, gameState.ship_position, gameState.status);
+                        this.updateCards(gameState.active_cards);
                         console.log('Initial game status loaded');
                     }
                 } catch (error) {
@@ -281,19 +306,19 @@
                     // Keep the "Loading..." placeholders if fetch fails
                 }
             }
-            
+
             async startGame() {
                 if (!this.selectedModel) return;
-                
+
                 const startButton = document.getElementById('startButton');
                 const statusDiv = document.getElementById('gameStatus');
                 const statusText = document.getElementById('statusText');
-                
+
                 startButton.disabled = true;
                 startButton.textContent = 'Starting Game...';
                 statusDiv.style.display = 'block';
                 statusText.textContent = 'Initializing...';
-                
+
                 try {
                     const response = await fetch('/start_game', {
                         method: 'POST',
@@ -304,15 +329,15 @@
                             model: this.selectedModel
                         })
                     });
-                    
+
                     if (response.ok) {
                         this.gameRunning = true;
                         startButton.textContent = 'Game Running';
                         startButton.style.display = 'none';
-                        
+
                         const stopButton = document.getElementById('stopButton');
                         stopButton.style.display = 'inline-block';
-                        
+
                         statusText.textContent = 'Game Active';
                         this.startPolling();
                     } else {
@@ -325,16 +350,16 @@
                     console.error('Error starting game:', error);
                 }
             }
-            
+
             async stopGame() {
                 const startButton = document.getElementById('startButton');
                 const stopButton = document.getElementById('stopButton');
                 const statusDiv = document.getElementById('gameStatus');
                 const statusText = document.getElementById('statusText');
-                
+
                 stopButton.disabled = true;
                 stopButton.textContent = 'Stopping...';
-                
+
                 try {
                     const response = await fetch('/stop_game', {
                         method: 'POST',
@@ -342,18 +367,18 @@
                             'Content-Type': 'application/json',
                         }
                     });
-                    
+
                     if (response.ok) {
                         this.gameRunning = false;
                         this.stopPolling();
-                        
+
                         // Reset UI elements
                         startButton.disabled = false;
                         startButton.textContent = 'Start Game';
                         startButton.style.display = 'inline-block';
                         stopButton.style.display = 'none';
                         statusText.textContent = 'Game Stopped';
-                        
+
                         console.log('Game stopped successfully');
                     } else {
                         throw new Error('Failed to stop game');
@@ -366,7 +391,7 @@
                     stopButton.textContent = 'Stop Game';
                 }
             }
-            
+
             initializeMap() {
                 const mapContainer = document.getElementById('map-container');
                 // Create 30x30 grid
@@ -379,7 +404,7 @@
                     }
                 }
             }
-            
+
             async loadGameState() {
                 try {
                     const response = await fetch('/game_state.json');
@@ -391,7 +416,7 @@
                     console.log('Waiting for game state...');
                 }
             }
-            
+
             updateDisplay(gameState) {
                 // Handle movement animation if present
                 if (gameState.animation_data && gameState.animation_data.success) {
@@ -400,30 +425,31 @@
                     // Standard update without animation
                     this.updateMap(gameState.map, gameState.ship_position, gameState.status);
                 }
-                
+
                 this.updateStatus(gameState.status);
                 this.updateAgentLogs(gameState.agent_reports);
                 this.updateToolLogs(gameState.tool_outputs);
+                this.updateCards(gameState.active_cards);
             }
-            
+
             async animateMovement(animationData, mapData, finalShipPosition, status) {
                 console.log('Animating movement with', animationData.total_steps, 'steps');
-                
+
                 // Get pursuing entities for visual effects
                 const pursuingEntities = status ? status.pursuing_entities || [] : [];
                 const pursuingPositions = new Set(
                     pursuingEntities.map(entity => `${entity.position[0]},${entity.position[1]}`)
                 );
-                
+
                 // Update map with base state (without ship at final position yet)
                 for (let y = 0; y < 30; y++) {
                     for (let x = 0; x < 30; x++) {
                         const cell = document.getElementById(`cell-${x}-${y}`);
                         const cellType = mapData[y][x];
-                        
+
                         cell.className = 'cell';
                         cell.textContent = '';
-                        
+
                         switch (cellType) {
                             case 'W':
                                 cell.className += ' water';
@@ -454,28 +480,28 @@
                         }
                     }
                 }
-                
+
                 // Show ship at starting position first
-                const startPos = animationData.steps[0] ? 
-                    [(finalShipPosition[0] - (animationData.steps[animationData.steps.length - 1].position[0] - animationData.steps[0].position[0])), 
-                     (finalShipPosition[1] - (animationData.steps[animationData.steps.length - 1].position[1] - animationData.steps[0].position[1]))] 
+                const startPos = animationData.steps[0] ?
+                    [(finalShipPosition[0] - (animationData.steps[animationData.steps.length - 1].position[0] - animationData.steps[0].position[0])),
+                    (finalShipPosition[1] - (animationData.steps[animationData.steps.length - 1].position[1] - animationData.steps[0].position[1]))]
                     : finalShipPosition;
-                    
+
                 // Better approach: get starting position from first step
                 let currentPos = [finalShipPosition[0], finalShipPosition[1]];
                 if (animationData.steps.length > 0) {
                     const lastStep = animationData.steps[animationData.steps.length - 1];
-                    const firstStep = animationData.steps[0]; 
+                    const firstStep = animationData.steps[0];
                     currentPos = [
                         finalShipPosition[0] - (lastStep.position[0] - firstStep.position[0]),
                         finalShipPosition[1] - (lastStep.position[1] - firstStep.position[1])
                     ];
                 }
-                
+
                 // Animate each step
                 for (let i = 0; i < animationData.steps.length; i++) {
                     const step = animationData.steps[i];
-                    
+
                     // Clear previous ship position
                     if (i === 0) {
                         const prevCell = document.getElementById(`cell-${currentPos[0]}-${currentPos[1]}`);
@@ -491,45 +517,45 @@
                             prevCell.textContent = ' ';
                         }
                     }
-                    
+
                     // Show ship at current step
                     const stepCell = document.getElementById(`cell-${step.position[0]}-${step.position[1]}`);
                     if (stepCell) {
                         stepCell.className = 'cell ship moving';
                         stepCell.textContent = '⚓';
-                        
+
                         // Show encounter message if any
                         if (step.encounter) {
                             console.log(`Step ${i + 1}: ${step.encounter.message}`);
                         }
                     }
-                    
+
                     // Wait before next step
                     if (i < animationData.steps.length - 1) {
                         await new Promise(resolve => setTimeout(resolve, step.delay_ms));
                     }
                 }
-                
+
                 // Final update with complete map state
                 this.updateMap(mapData, finalShipPosition, status);
             }
-            
+
             updateMap(mapData, shipPosition, status) {
                 // Get pursuing entities for visual effects
                 const pursuingEntities = status ? status.pursuing_entities || [] : [];
                 const pursuingPositions = new Set(
                     pursuingEntities.map(entity => `${entity.position[0]},${entity.position[1]}`)
                 );
-                
+
                 // Clear all cells first
                 for (let y = 0; y < 30; y++) {
                     for (let x = 0; x < 30; x++) {
                         const cell = document.getElementById(`cell-${x}-${y}`);
                         const cellType = mapData[y][x];
-                        
+
                         cell.className = 'cell';
                         cell.textContent = '';
-                        
+
                         if (shipPosition && shipPosition[0] === x && shipPosition[1] === y) {
                             cell.className += ' ship';
                             cell.textContent = '⚓';
@@ -568,19 +594,19 @@
                     }
                 }
             }
-            
+
             updateStatus(status) {
                 const statusDiv = document.getElementById('ship-status');
                 const totalEnemies = (status.total_enemies || 0) + (status.total_monsters || 0);
                 const enemiesSunk = (status.enemies_defeated || 0) + (status.monsters_defeated || 0);
-                
+
                 statusDiv.innerHTML = `
                     <p><strong>Lives:</strong> ${'❤️'.repeat(status.lives)} ${status.lives}/3 | <strong>Score:</strong> ${status.score || 0}</p>
                     <p><strong>Treasures:</strong> ${status.treasures_collected}/${status.total_treasures} | <strong>Enemies Sunk:</strong> ${enemiesSunk}/${totalEnemies} | <strong>Turn:</strong> ${status.turn_count}</p>
                     <p><strong>Pos:</strong> (${status.ship_position[0]}, ${status.ship_position[1]}) | <strong>Ammo:</strong> ${status.cannonballs || 25}</p>
                 `;
             }
-            
+
             updateAgentLogs(reports) {
                 if (reports.navigator) {
                     document.getElementById('navigator-log').innerHTML = reports.navigator.replace(/\n/g, '<br>');
@@ -592,7 +618,7 @@
                     document.getElementById('captain-log').innerHTML = reports.captain.replace(/\n/g, '<br>');
                 }
             }
-            
+
             updateToolLogs(toolOutputs) {
                 if (toolOutputs) {
                     if (toolOutputs.move) {
@@ -606,12 +632,34 @@
                     }
                 }
             }
-            
+
+            updateCards(activeCards) {
+                const cardsContainer = document.getElementById('active-cards');
+
+                if (!activeCards || activeCards.length === 0) {
+                    cardsContainer.innerHTML = '<div class="no-cards">No cards active<br><small>Cards are drawn every 4 turns starting on turn 4</small></div>';
+                    return;
+                }
+
+                let cardsHtml = '';
+                for (let i = 0; i < activeCards.length; i++) {
+                    const [target, text] = activeCards[i];
+                    cardsHtml += `
+                        <div class="card-item">
+                            <div class="card-target">${target.toUpperCase()}</div>
+                            <div class="card-text">${text}</div>
+                        </div>
+                    `;
+                }
+
+                cardsContainer.innerHTML = cardsHtml;
+            }
+
             async updateSystemPrompts() {
                 const navigatorPrompt = document.getElementById('navigatorPrompt').value;
                 const cannoneerPrompt = document.getElementById('cannoneerPrompt').value;
                 const captainPrompt = document.getElementById('captainPrompt').value;
-                
+
                 try {
                     const response = await fetch('/update_prompts', {
                         method: 'POST',
@@ -624,14 +672,14 @@
                             captain: captainPrompt
                         })
                     });
-                    
+
                     if (response.ok) {
                         // Show visual feedback
                         const button = document.getElementById('updatePrompts');
                         const originalText = button.innerHTML;
                         button.innerHTML = '<span class="material-symbols-outlined">check</span> Updated!';
                         button.style.backgroundColor = '#27ae60';
-                        
+
                         setTimeout(() => {
                             button.innerHTML = originalText;
                             button.style.backgroundColor = '';
@@ -639,38 +687,39 @@
                     }
                 } catch (error) {
                     console.error('Error updating prompts:', error);
-                    
+
                     // Show error feedback
                     const button = document.getElementById('updatePrompts');
                     const originalText = button.innerHTML;
                     button.innerHTML = '<span class="material-symbols-outlined">error</span> Error';
                     button.style.backgroundColor = '#e74c3c';
-                    
+
                     setTimeout(() => {
                         button.innerHTML = originalText;
                         button.style.backgroundColor = '';
                     }, 2000);
                 }
             }
-            
+
             startPolling() {
                 // Only poll when game is running
                 if (!this.gameRunning) return;
-                
+
                 // Poll for updates every 2 seconds
                 this.pollInterval = setInterval(() => {
                     this.loadGameState();
                 }, 2000);
-                
+
                 // Initial load
                 this.loadGameState();
             }
         }
-        
+
         // Initialize the UI when page loads
         document.addEventListener('DOMContentLoaded', () => {
             new PirateGameUI();
         });
     </script>
 </body>
+
 </html>

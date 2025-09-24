@@ -145,7 +145,8 @@ class PirateGame:
         if self.use_gui and self.gui:
             print("📱 GUI Display Active")
         else:
-            self.game_state.display_map()
+            print(f"🚢 Game starting at position {self.game_state.ship_position}")
+            print(f"💰 Treasures to collect: {self.game_state.total_treasures}")
 
         turn_count = 0
         max_turns = 50  # Prevent infinite loops
@@ -419,8 +420,7 @@ class PirateGame:
         if self.use_gui and self.gui:
             self.gui.update_display()
         else:
-            print("\\n🗺️  Updated Map:")
-            self.game_state.display_map(radius=4)
+            print("\\n🗺️  Game state updated")
 
         # Check game status
         status = self.game_state.get_status()

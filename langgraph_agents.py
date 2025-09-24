@@ -415,15 +415,93 @@ class LangGraphPirateGameAgents:
             return state
         
         def captain_agent(state: GameAgentState) -> GameAgentState:
-            """Captain agent - to be implemented in Step 2.4"""
-            print("\\n👨‍✈️ CAPTAIN: Placeholder - reviewing crew reports...")
+            """
+            Captain Agent: Makes strategic movement decisions based on navigator and cannoneer reports
+            Uses LangGraph tool calling for move_ship
+            """
+            print("\\n🏴‍☠️ CAPTAIN: Analyzing tactical situation...")
             
             navigator_report = state["agent_reports"].get("navigator", "No navigator report")
             cannoneer_report = state["agent_reports"].get("cannoneer", "No cannoneer report")
             
-            state["agent_reports"]["captain"] = f"👨‍✈️ CAPTAIN: Strategic assessment based on crew intel"
-            state["decision"] = "HOLD_POSITION"  # Placeholder decision
+            # Create system message with tactical context
+            system_content = f"""You are the Captain of a pirate ship. Your crew has provided tactical reports:
+
+NAVIGATOR REPORT: {navigator_report}
+CANNONEER REPORT: {cannoneer_report}
+
+CURRENT SHIP STATUS:
+- Position: {state.get('game_state', {}).get('player_position', 'Unknown')}
+- Health: {state.get('game_state', {}).get('player_health', 100)}
+- Ammunition: {state.get('game_state', {}).get('player_ammo', 10)}
+
+CAPTAIN'S DECISION: Based on your crew's reports, make a strategic movement decision.
+- Use the move_ship tool to reposition tactically
+- Consider advantages/threats from crew reports
+- Plan movements that support overall strategy
+
+Make your movement command using the available tools."""
+
+            # Create isolated message context (prevents 400 errors)
+            system_message = SystemMessage(content=system_content)
+            human_message = HumanMessage(content="Captain, what is your tactical movement decision based on crew reports?")
+            messages = [system_message, human_message]
             
+            # Bind tools to captain LLM
+            captain_with_tools = self.llm.bind_tools(self.captain_tools)
+            
+            try:
+                # Invoke captain with tool capabilities
+                response = captain_with_tools.invoke(messages)
+                
+                # Process captain's response
+                captain_analysis = f"🏴‍☠️ CAPTAIN: {response.content}"
+                print(f"Captain decision: {response.content}")
+                
+                # Update state with captain's analysis and response
+                state["agent_reports"]["captain"] = captain_analysis
+                state["messages"] = [response]  # LangGraph needs this for tool handling
+                state["current_agent"] = "captain"
+                
+                # Check if captain made tool calls
+                if response.tool_calls:
+                    print(f"🔧 Captain made {len(response.tool_calls)} tool calls")
+                
+            except Exception as e:
+                print(f"❌ Captain error: {e}")
+                state["agent_reports"]["captain"] = "🏴‍☠️ CAPTAIN: Strategic movement analysis pending..."
+            
+            # Update web GUI if available
+            if self.web_gui:
+                self.web_gui.agent_reports["captain"] = state["agent_reports"]["captain"]
+                
+            return state
+        
+        def captain_result_handler(state: GameAgentState) -> GameAgentState:
+            """Handle captain tool results and extract movement report"""
+            print("🧭 CAPTAIN: Processing movement results...")
+            
+            # Extract tool results from messages
+            tool_results = extract_tool_results(state.get("messages", []))
+            
+            # Look for recent movement results
+            movement_results = [r for r in tool_results if r.get('tool_name') == 'move_ship']
+            
+            if movement_results:
+                # Process movement results
+                movement_report = "🧭 CAPTAIN MOVEMENT REPORT:\\n"
+                for i, result in enumerate(movement_results[-2:], 1):  # Last 2 movements
+                    movement_data = result.get('tool_result', 'Movement data unavailable')
+                    movement_report += f"Tactical Movement #{i}: {movement_data}\\n"
+                
+                state["agent_reports"]["captain"] = movement_report.strip()
+                print(f"🧭 Movement report generated: {len(movement_results)} movements processed")
+            else:
+                # No movement action taken
+                state["agent_reports"]["captain"] = "🧭 CAPTAIN REPORT: HOLDING POSITION - Strategic position maintained, no movement required"
+                print("⚓ Captain: No movement action taken - maintaining current position")
+            
+            # Update web GUI if available
             if self.web_gui:
                 self.web_gui.agent_reports["captain"] = state["agent_reports"]["captain"]
                 
@@ -461,7 +539,7 @@ class LangGraphPirateGameAgents:
         # Add result handler nodes
         workflow.add_node("navigator_result_handler", navigator_result_handler)
         workflow.add_node("cannoneer_result_handler", cannoneer_result_handler)
-        # captain result handler will be added in subsequent steps
+        workflow.add_node("captain_result_handler", captain_result_handler)
         
         # Set entry point
         workflow.set_entry_point("navigator")
@@ -490,8 +568,17 @@ class LangGraphPirateGameAgents:
         workflow.add_edge("cannoneer_tools", "cannoneer_result_handler")
         workflow.add_edge("cannoneer_result_handler", "captain")
         
-        # Temporary edge for captain (will be updated when captain agent is implemented)
-        workflow.add_edge("captain", END)
+        # Captain workflow: captain -> tools (if needed) -> result_handler -> END
+        workflow.add_conditional_edges(
+            "captain",
+            route_after_agent,
+            {
+                "captain_tools": "captain_tools",
+                "end": END
+            }
+        )
+        workflow.add_edge("captain_tools", "captain_result_handler")
+        workflow.add_edge("captain_result_handler", END)
         
         self.graph = workflow.compile()
         print("✅ LangGraph workflow with Navigator agent implementation complete")

@@ -49,6 +49,9 @@ class NavigatorTool:
             else:
                 return "same position"
 
+        # Track discovered positions to update the map
+        discovered_updates = []
+
         for pos, cell in surrounding_cells.items():
             # Skip the ship's current position
             if pos == ship_pos:
@@ -57,6 +60,10 @@ class NavigatorTool:
             # Check line of sight - skip items blocked by land
             if not self.game_state.game_map.has_line_of_sight(ship_pos, pos):
                 continue
+
+            # Add discovered cell to update list
+            discovered_symbol = self.game_state.convert_cell_to_discovered_symbol(cell)
+            discovered_updates.append((pos, discovered_symbol))
 
             distance = abs(pos.x - ship_pos.x) + abs(pos.y - ship_pos.y)
             direction = get_direction(ship_pos, pos)
@@ -87,7 +94,11 @@ class NavigatorTool:
             "immediate_threats": [t for t in enemies + monsters if t["distance"] <= 1],
             "reachable_treasures": [t for t in treasures if t["distance"] <= 3],
             "summary": self._generate_scan_summary(treasures, enemies, monsters, land_obstacles),
+            "full_discovered_map": self.game_state.get_full_discovered_map(),
         }
+
+        # Update the discovered map with newly scanned areas
+        self.game_state.update_discovered_area(discovered_updates)
 
         return scan_report
 

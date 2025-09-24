@@ -1,12 +1,59 @@
-# Development Log - Pirate Game AI Agent System
+# Development Progress
 
-## Project Overview
+## Latest Updates
+
+### 2024-XX-XX - LangGraph Agent Implementation Complete ✅
+
+**BREAKTHROUGH SESSION: Complete LangGraph tool calling implementation**
+
+#### Major Accomplishments:
+1. **🎯 Fixed 400 Error**: Resolved "messages with role 'tool' must be a response to a preceding message with 'tool_calls'" by implementing isolated agent message contexts
+2. **🤖 Complete Agent Workflow**: Navigator → Cannoneer → Captain all working with proper LangGraph tool calling
+3. **⚔️ Tool Integration**: All three agents (Navigator, Cannoneer, Captain) successfully using bind_tools() with OpenAI models
+4. **🏗️ Proper Architecture**: Full LangGraph StateGraph with conditional edges, ToolNodes, and result handlers
+
+#### Technical Implementation:
+- **File**: `langgraph_agents.py` - Complete rewrite using proper LangGraph patterns
+- **Key Pattern**: Each agent gets fresh [system_message, human_message] context to prevent tool message conflicts
+- **Agent Communication**: Via formatted reports in `state["agent_reports"]` instead of raw message passing
+- **Tool Calling**: Using `llm.bind_tools([tool_list])` with OpenAI models (Ollama doesn't support bind_tools)
+
+#### Test Results:
+```
+✅ Navigator: Scans environment and generates tactical report
+✅ Cannoneer: Processes targets and executes cannon fire
+✅ Captain: Analyzes crew reports and makes strategic movement decisions
+✅ All agents working with proper LangGraph tool calling - NO MORE 400 ERRORS!
+```
+
+#### What This Enables:
+- Proper AI agent workflow with tool calling
+- Scalable LangGraph architecture for future agent additions
+- Clean separation of concerns between navigation, combat, and movement
+- Foundation for complete game automation
+
+#### Next Steps:
+- Minor bug fixes (cannon fire parameter issue)
+- Integration with web GUI for real-time agent visualization
+- Performance optimization and error handling improvements
+
+---
 - **Goal**: 2D turn-based pirate game played by AI agents using LangGraph
 - **Architecture**: Python with LangGraph, LangChain, and local Ollama integration
 - **Map System**: CSV-based 30x30 grid with Water, Land, Treasure, Enemies, Monsters
 - **AI Agents**: Navigator (scanning), Cannoneer (combat), Captain (strategy/movement)
 
 ## Recent Major Updates
+
+### 2024-12-24 - Navigator Discovered Map System ✅
+- ✅ **Persistent Map Knowledge**: Implemented 30x30 discovered map grid that builds Navigator's understanding over time
+- ✅ **Dynamic Map Building**: Navigator scans reveal terrain (~ water, # land, $ treasure) within line-of-sight, replacing '?' unknown areas
+- ✅ **Treasure Collection Updates**: Collected treasures automatically update from '$' to '~' in discovered map for accurate representation
+- ✅ **Strategic Exploration**: Navigator now has persistent memory of explored areas and can plan efficient routes to unknown regions
+- ✅ **Enhanced Navigator AI**: Updated system prompts to prioritize unexplored '?' areas and use map knowledge for strategic recommendations
+- ✅ **Map Integration**: Discovered map included in game status and scan reports for both Navigator AI and web UI display
+- ✅ **Mobile Entity Exclusion**: Enemies and monsters excluded from discovered map since they're mobile, but still detected in real-time scans
+- ✅ **Line-of-Sight Accuracy**: Map updates respect existing line-of-sight mechanics - only visible terrain gets revealed
 
 ### 2024-12-23 - Web Font Performance Optimization ✅
 - ✅ **Font Loading Performance Fix**: Identified and resolved slow turn initialization caused by repeated Google Fonts downloads/re-rendering

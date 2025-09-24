@@ -206,6 +206,14 @@ class GameState:
         self.total_enemies = len(self.game_map.find_cell_type(CellType.ENEMY))
         self.total_monsters = len(self.game_map.find_cell_type(CellType.MONSTER))
 
+        # Initialize discovered map with all '?' symbols (unknown)
+        self.discovered_map = [
+            ["?" for _ in range(self.game_map.width)] for _ in range(self.game_map.height)
+        ]
+
+        # Mark the starting ship position as discovered water
+        self.update_discovered_cell(self.ship_position, "~")
+
     def _find_initial_ship_position(self) -> Position:
         """Find the initial ship position from the map"""
         ship_positions = self.game_map.find_cell_type(CellType.OWNSHIP)
@@ -357,6 +365,10 @@ class GameState:
         self.cannonballs += 2  # Reward 2 cannonballs per treasure
         self.score += 10  # Add 10 points for treasure
         self.game_map.set_cell(pos, CellType.WATER.value)
+
+        # Update discovered map to show treasure location is now water
+        self.update_discovered_cell(pos, "~")
+
         print(f"🏆 Treasure collected! Total: {self.treasures_collected}/{self.total_treasures}")
         print(f"💰 Rewarded with 2 cannonballs! Total: {self.cannonballs} cannonballs")
         print(f"⭐ +10 points! Score: {self.score}")
@@ -623,54 +635,98 @@ class GameState:
             "game_over": self.game_over,
             "victory": self.victory,
             "pursuing_entities": self.get_pursuing_entities(),
+            "discovered_map": self.get_discovered_map_around_ship(radius=10),
         }
 
-    def display_map(self, radius: int = 5):
-        """Display the map around the ship"""
-        print(f"\n{'='*50}")
-        print(
-            f"Turn {self.turn_count} | Lives: {self.lives} | Treasures: {self.treasures_collected}/{self.total_treasures}"
-        )
-        print(f"Ship Position: ({self.ship_position.x}, {self.ship_position.y})")
-        print(f"{'='*50}")
+    def update_discovered_cell(self, position: Position, cell_symbol: str):
+        """Update a single cell in the discovered map with the actual terrain"""
+        if 0 <= position.y < len(self.discovered_map) and 0 <= position.x < len(
+            self.discovered_map[0]
+        ):
+            self.discovered_map[position.y][position.x] = cell_symbol
 
-        # Display a section of the map around the ship
-        start_x = max(0, self.ship_position.x - radius)
-        end_x = min(self.game_map.width, self.ship_position.x + radius + 1)
-        start_y = max(0, self.ship_position.y - radius)
-        end_y = min(self.game_map.height, self.ship_position.y + radius + 1)
+    def update_discovered_area(self, positions_and_symbols: List[Tuple[Position, str]]):
+        """Update multiple cells in the discovered map"""
+        for position, symbol in positions_and_symbols:
+            self.update_discovered_cell(position, symbol)
 
-        for y in range(start_y, end_y):
-            row = ""
-            for x in range(start_x, end_x):
-                if x == self.ship_position.x and y == self.ship_position.y:
-                    row += "🚢 "
-                else:
-                    cell = self.game_map.grid[y][x]
-                    if cell == "W":
-                        row += "🌊 "
-                    elif cell == "L":
-                        row += "🌍 "
-                    elif cell == "T":
-                        row += "💰 "
-                    elif cell == "E":
-                        row += "⚔️ "
-                    elif cell == "M":
-                        row += "👹 "
-                    else:
-                        row += f"{cell} "
-            print(f"{y:2d}: {row}")
+    def get_discovered_map_around_ship(self, radius: int = 15) -> str:
+        """Get a text representation of the discovered map around the ship"""
+        center_x, center_y = self.ship_position.x, self.ship_position.y
 
-        # Print x-axis labels
-        x_labels = "    "
+        # Calculate bounds, ensuring we stay within map boundaries
+        start_x = max(0, center_x - radius)
+        end_x = min(self.game_map.width, center_x + radius + 1)
+        start_y = max(0, center_y - radius)
+        end_y = min(self.game_map.height, center_y + radius + 1)
+
+        map_lines = []
+        map_lines.append(f"Navigator's Known Map (Ship at {center_x},{center_y}):")
+        map_lines.append("Legend: ? = Unknown, ~ = Water, # = Land, $ = Treasure, @ = Ship")
+        map_lines.append("")
+
+        # Add column headers
+        header = "   "
         for x in range(start_x, end_x):
-            x_labels += f"{x%10} "
-        print(x_labels)
-        print()
+            header += f"{x%10}"
+        map_lines.append(header)
+
+        # Add rows
+        for y in range(start_y, end_y):
+            row = f"{y:2d} "
+            for x in range(start_x, end_x):
+                if x == center_x and y == center_y:
+                    row += "@"  # Ship position
+                else:
+                    row += self.discovered_map[y][x]
+            map_lines.append(row)
+
+        return "\n".join(map_lines)
+
+    def get_full_discovered_map(self) -> str:
+        """Get a text representation of the full discovered map"""
+        map_lines = []
+        map_lines.append("Navigator's Complete Known Map:")
+        map_lines.append("Legend: ? = Unknown, ~ = Water, # = Land, $ = Treasure, @ = Ship")
+        map_lines.append("")
+
+        # Add column headers (show every 5th column for readability)
+        header = "   "
+        for x in range(0, self.game_map.width, 5):
+            header += f"{x:5d}"
+        map_lines.append(header)
+
+        # Add rows
+        for y in range(self.game_map.height):
+            if y % 5 == 0:  # Show row numbers every 5 rows for readability
+                row = f"{y:2d} "
+            else:
+                row = "   "
+            for x in range(self.game_map.width):
+                if x == self.ship_position.x and y == self.ship_position.y:
+                    row += "@"  # Ship position
+                else:
+                    row += self.discovered_map[y][x]
+            map_lines.append(row)
+
+        return "\n".join(map_lines)
+
+    def convert_cell_to_discovered_symbol(self, cell_type: str) -> str:
+        """Convert actual map cell type to discovered map symbol"""
+        if cell_type == CellType.WATER.value:
+            return "~"
+        elif cell_type == CellType.LAND.value:
+            return "#"
+        elif cell_type == CellType.TREASURE.value:
+            return "$"
+        # Don't reveal enemies/monsters on discovered map since they're mobile
+        elif cell_type in [CellType.ENEMY.value, CellType.MONSTER.value]:
+            return "~"  # Show as water since the terrain underneath is water
+        else:
+            return "~"  # Default to water for unknown types
 
 
 if __name__ == "__main__":
     # Quick test of the game state
     game = GameState()
-    game.display_map()
     print(f"Game status: {game.get_status()}")

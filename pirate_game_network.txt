@@ -1,0 +1,78 @@
+
+🏴‍☠️ PIRATE GAME LANGGRAPH NETWORK STRUCTURE
+=============================================
+
+📊 WORKFLOW VISUALIZATION:
+┌─────────────────────────────────────────────────────────────┐
+│                    PIRATE AGENT WORKFLOW                    │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  __start__                                                  │
+│      │                                                      │
+│      ▼                                                      │
+│ 🧭 navigator ────────────────┐                              │
+│      │                       │                              │
+│      ▼                       ▼                              │
+│ navigator_tools         [no tools]                          │
+│      │                       │                              │
+│      ▼                       │                              │
+│ navigator_result_handler     │                              │
+│      │                       │                              │
+│      └───────────────────────┘                              │
+│      │                                                      │
+│      ▼                                                      │
+│ ⚔️ cannoneer ─────────────────┐                              │
+│      │                       │                              │
+│      ▼                       ▼                              │
+│ cannoneer_tools         [no tools]                          │
+│      │                       │                              │
+│      ▼                       │                              │
+│ cannoneer_result_handler     │                              │
+│      │                       │                              │
+│      └───────────────────────┘                              │
+│      │                                                      │
+│      ▼                                                      │
+│ 🏴‍☠️ captain ─────────────────┐                               │
+│      │                       │                              │
+│      ▼                       ▼                              │
+│ captain_tools           [no tools]                          │
+│      │                       │                              │
+│      ▼                       │                              │
+│ captain_result_handler       │                              │
+│      │                       │                              │
+│      └───────────────────────┘                              │
+│      │                                                      │
+│      ▼                                                      │
+│   __end__                                                   │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+
+🔧 AGENT TOOLS:
+• Navigator: navigate_scan (environment scanning)
+• Cannoneer: fire_cannon (combat engagement)  
+• Captain: move_ship (strategic movement)
+
+⚡ CONDITIONAL LOGIC:
+Each agent can either:
+- Make tool calls → Go to tool node → Process results → Next agent
+- Skip tools → Go directly to next agent
+
+🎯 WORKFLOW SUMMARY:
+1. Navigator scans environment and reports findings
+2. Cannoneer assesses targets and engages if needed  
+3. Captain analyzes reports and makes movement decisions
+4. Each step processes tool results before proceeding
+
+
+📍 GRAPH NODES (11 total):
+  🎯 __end__ (system node)
+  🎯 __start__ (system node)
+  🤖 cannoneer (agent node)
+  📊 cannoneer_result_handler (result processing)
+  🔧 cannoneer_tools (tool execution)
+  🤖 captain (agent node)
+  📊 captain_result_handler (result processing)
+  🔧 captain_tools (tool execution)
+  🤖 navigator (agent node)
+  📊 navigator_result_handler (result processing)
+  🔧 navigator_tools (tool execution)

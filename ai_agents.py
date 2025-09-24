@@ -852,7 +852,7 @@ class PirateGameAgents:
         self.step_stream = None
         self.step_iterator = None
 
-        print("🔧 Step mode initialized - ready for first step")
+        print("🔧 Step turn initialized - use 'Step' button to execute agents")
 
     def run_step(self) -> dict:
         """Run one step of the agent workflow using LangGraph streaming"""
@@ -865,23 +865,37 @@ class PirateGameAgents:
                 "final_state": None,
             }
 
-        # If we haven't initialized a turn, do it now
+        # Step state should be initialized before calling run_step
         if self.step_state is None:
-            self.init_step_turn()
+            return {
+                "status": "error",
+                "message": "Step state not initialized. Call init_step_turn() first.",
+                "final_state": None,
+            }
 
         try:
+            import time
+
             # If we haven't started streaming yet, initialize it
             if self.step_iterator is None:
                 print("🚀 Initializing LangGraph stream for step execution")
+                stream_start = time.time()
                 self.step_iterator = iter(self.graph.stream(self.step_state))
+                stream_init_time = time.time() - stream_start
+                print(f"⏱️  Stream initialization took {stream_init_time:.2f} seconds")
 
             # Get the next step from the stream
             try:
+                print("🔄 Waiting for next step from LangGraph stream...")
+                step_start = time.time()
                 step_output = next(self.step_iterator)
+                step_time = time.time() - step_start
+
                 node_name = list(step_output.keys())[0]
                 node_state = step_output[node_name]
 
                 print(f"🎯 Executed step: {node_name.upper()}")
+                print(f"⏱️  {node_name.upper()} execution took {step_time:.2f} seconds")
 
                 # Update our step state
                 self.step_state = node_state

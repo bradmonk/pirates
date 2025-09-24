@@ -8,6 +8,24 @@
 
 ## Recent Major Updates
 
+### 2024-12-23 - Web Font Performance Optimization ✅
+- ✅ **Font Loading Performance Fix**: Identified and resolved slow turn initialization caused by repeated Google Fonts downloads/re-rendering
+- ✅ **Font Preloading**: Added `rel="preload"` for Material Icons, Material Symbols, and custom fonts to cache them immediately on page load
+- ✅ **Font Display Optimization**: Added `&display=swap` parameter to all Google Fonts URLs for faster rendering with fallbacks
+- ✅ **CSS Font Smoothing**: Enhanced font rendering with `font-feature-settings`, `antialiased`, and `optimizeLegibility` for better performance
+- ✅ **Fallback Font Stack**: Added proper fallback fonts (Arial, sans-serif) to CSS custom properties to prevent rendering delays
+- ✅ **Turn Initialization Speed**: Eliminated the noticeable delay users experienced at the beginning of each turn/round
+- ✅ **Debug Timing Cleanup**: Removed Python timing measurements after confirming the performance issue was frontend font-related, not backend
+
+### 2024-12-23 - Real-Time Step Updates Implementation ✅
+- ✅ **Immediate Agent Feedback**: Implemented real-time display of agent outputs during their execution step rather than waiting for subsequent steps
+- ✅ **JSON Serialization Fix**: Added `_sanitize_for_json()` method to handle LangChain AIMessage objects that were causing "Object of type AIMessage is not JSON serializable" errors
+- ✅ **Enhanced Step API**: Modified web_gui.py `/step_game` endpoint to immediately return step results containing agent outputs and game state updates
+- ✅ **Backend Result Capture**: Enhanced pirate_game.py to capture individual step results immediately and store them in `gui.last_step_result` for API access
+- ✅ **Material Icons UI Polish**: Fixed Material Icons implementation by switching to proper `material-icons` class and improved button styling
+- ✅ **OpenAI Model Prioritization**: Reordered model dropdown to show OpenAI models first for better user experience
+- ✅ **Improved User Experience**: Users now see agent reasoning and outputs immediately when each step executes instead of delayed display
+
 ### 2024-12-23 - Step-by-Step Debugging Mode ✅
 - ✅ **Educational Step Mode**: Added step-by-step execution allowing users to manually progress through Navigator → Cannoneer → Captain sequences
 - ✅ **New Step Button UI**: Implemented half-width Step button alongside Start button with orange styling and proper Material Icons

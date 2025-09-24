@@ -24,6 +24,7 @@ class PirateGameWebGUI:
         self.game_stop_requested = False
         self.step_mode = False  # Track if we're in step mode
         self.step_ready = False  # Track if a step is ready to execute
+        self.last_step_result = None  # Store the last step result for immediate UI updates
         self.agent_reports = {}
         self.tool_outputs = {}
         self.system_prompts = SYSTEM_PROMPTS.copy()
@@ -153,15 +154,56 @@ class PirateGameWebGUI:
                         response = {"status": "success", "message": "Step game initialized"}
                         self.wfile.write(json.dumps(response).encode())
                     elif self.path == "/step_game":
+                        import time
+
+                        request_start = time.time()
+                        print(f"🔄 /step_game request received at {request_start}")
+
                         self.send_response(200)
                         self.send_header("Content-type", "application/json")
                         self.send_header("Access-Control-Allow-Origin", "*")
                         self.end_headers()
 
                         # Signal that a step should be executed
+                        print(f"🚀 Setting step_ready = True")
                         self.game_gui.step_ready = True
 
-                        response = {"status": "success", "message": "Step executed"}
+                        # Wait briefly for the step to execute and result to be stored
+                        timeout = 2  # Reduced timeout since we handle turn transitions
+                        start_time = time.time()
+
+                        print(f"⏳ Waiting for step result (timeout: {timeout}s)")
+
+                        while (
+                            self.game_gui.last_step_result is None
+                            and (time.time() - start_time) < timeout
+                        ):
+                            time.sleep(0.1)
+
+                        # Return the step result if available
+                        if self.game_gui.last_step_result:
+                            step_result = self.game_gui.last_step_result.copy()
+                            # Clear the stored result
+                            self.game_gui.last_step_result = None
+
+                            # Sanitize step result to make it JSON serializable
+                            sanitized_step_result = self.game_gui._sanitize_for_json(step_result)
+
+                            response = {
+                                "status": "success",
+                                "message": "Step executed",
+                                "step_result": sanitized_step_result,
+                            }
+
+                            response_time = time.time() - request_start
+                            print(
+                                f"✅ /step_game responding with result after {response_time:.2f}s"
+                            )
+                        else:
+                            response = {"status": "timeout", "message": "Step execution timed out"}
+                            response_time = time.time() - request_start
+                            print(f"⏰ /step_game timeout after {response_time:.2f}s")
+
                         self.wfile.write(json.dumps(response).encode())
                     elif self.path == "/stop_game":
                         self.send_response(200)
@@ -210,6 +252,32 @@ class PirateGameWebGUI:
         except Exception as e:
             print(f"❌ Error starting web server: {e}")
             self.running = False
+
+    def _sanitize_for_json(self, obj):
+        """Convert objects to JSON-serializable format."""
+        from langchain_core.messages import BaseMessage
+
+        if isinstance(obj, BaseMessage):
+            # Convert LangChain messages to serializable dict
+            return {
+                "type": obj.__class__.__name__,
+                "content": obj.content,
+                "additional_kwargs": (
+                    obj.additional_kwargs if hasattr(obj, "additional_kwargs") else {}
+                ),
+            }
+        elif isinstance(obj, dict):
+            return {key: self._sanitize_for_json(value) for key, value in obj.items()}
+        elif isinstance(obj, list):
+            return [self._sanitize_for_json(item) for item in obj]
+        elif isinstance(obj, tuple):
+            return tuple(self._sanitize_for_json(item) for item in obj)
+        elif hasattr(obj, "__dict__"):
+            # For other objects with attributes, convert to dict
+            return {key: self._sanitize_for_json(value) for key, value in obj.__dict__.items()}
+        else:
+            # Return primitive types as-is
+            return obj
 
     def stop_server(self):
         """Stop the web server"""

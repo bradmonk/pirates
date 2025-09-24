@@ -204,12 +204,28 @@ class PirateGame:
             # If no turn in progress, wait for step command or start new turn
             if not turn_in_progress:
                 # Wait for step ready signal
+                print("🔄 Waiting for step ready signal...")
+                wait_start = time.time()
+                poll_count = 0
+
                 while not (self.gui.step_ready and self.gui.game_started):
                     time.sleep(0.1)
+                    poll_count += 1
+
+                    # Debug: Print status every second
+                    if poll_count % 10 == 0:
+                        elapsed = time.time() - wait_start
+                        print(
+                            f"⏳ Still waiting for step signal... ({elapsed:.1f}s elapsed, step_ready={self.gui.step_ready}, game_started={self.gui.game_started})"
+                        )
+
                     if self.gui.game_stop_requested:
                         print("🛑 Stop requested during step wait")
                         self._handle_game_end(turn_count, max_turns)
                         return
+
+                wait_time = time.time() - wait_start
+                print(f"✅ Step signal received after {wait_time:.2f} seconds")
 
                 # Start new turn
                 turn_count += 1
@@ -237,12 +253,33 @@ class PirateGame:
                     step_result = self.agents.run_step()
                     print(f"🔍 Step result: {step_result['status']} - {step_result['message']}")
 
+                    # Store step result for immediate UI updates
+                    if self.gui:
+                        self.gui.last_step_result = step_result.copy()
+                        # If we have current step state, extract agent reports
+                        if hasattr(self.agents, "step_state") and self.agents.step_state:
+                            self.gui.last_step_result["agent_reports"] = self.agents.step_state[
+                                "agent_reports"
+                            ]
+                            self.gui.last_step_result["game_status"] = self.agents.step_state[
+                                "game_status"
+                            ]
+
                     if step_result["status"] == "complete":
                         # Turn completed, process results
                         print("🔄 Processing turn results...")
                         result = self._process_turn_results(step_result["final_state"], turn_count)
                         turn_in_progress = False
                         print(f"🎯 Turn result: {result}")
+
+                        # Store a special "turn_complete" result for the web interface
+                        if self.gui:
+                            self.gui.last_step_result = {
+                                "status": "turn_complete",
+                                "message": f"Turn {turn_count} completed",
+                                "turn_result": result,
+                                "final_state": step_result.get("final_state", {}),
+                            }
 
                         if result in ["STOP", "VICTORY", "DEFEAT"]:
                             print(f"🛑 Game ending due to: {result}")
@@ -260,9 +297,7 @@ class PirateGame:
                         # Step completed but turn not finished yet
                         print(f"✅ Agent step completed: {step_result['message']}")
 
-                self.gui.step_ready = False  # Reset step signal
-
-        # Final game summary
+                self.gui.step_ready = False  # Reset step signal        # Final game summary
         self._handle_game_end(turn_count, max_turns)
 
     def _execute_turn(self, turn_count: int) -> str:

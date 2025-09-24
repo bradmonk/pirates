@@ -1,7 +1,17 @@
+/* Font performance optimizations */
+/* Prevent font flashing during updates */
+.material-icons,
+.material-symbols-outlined {
+    font-feature-settings: "liga" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+}
+
 :root {
-    --pse_font: 'Muli';
-    --pse_body_font: 'Almarai';
-    --pse_title_font: 'Almendra SC';
+    --pse_font: 'Muli', Arial, sans-serif;
+    --pse_body_font: 'Almarai', Arial, sans-serif;
+    --pse_title_font: 'Almendra SC', serif;
     --pse_trueblue: #006AB3;
     --pse_darkblue: #13437B;
     --pse_liteblue: #9BC0E5;
